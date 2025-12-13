@@ -1,0 +1,126 @@
+/* =========================================
+   ESTILOS DE AUTENTICACIÓN UNIFICADOS
+   ========================================= */
+
+.auth-wrapper {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-bg-body); /* El gris suave del dashboard */
+    padding: 1rem;
+}
+
+.auth-card-global {
+    background: white;
+    width: 100%;
+    max-width: 450px; /* Tarjeta centrada y contenida */
+    padding: 2.5rem;
+    border-radius: 16px; /* Borde redondeado consistente */
+    border: 1px solid var(--border-color);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05); /* Sombra un poco más profunda para destacar */
+    text-align: center;
+    animation: fadeIn 0.4s ease-out;
+}
+
+/* Icono/Logo superior */
+.auth-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #0f6cc9 0%, #0b55a0 100%);
+    color: white;
+    font-size: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    margin: 0 auto 1.5rem auto;
+    box-shadow: 0 4px 12px rgba(15, 108, 201, 0.3);
+}
+
+.auth-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+    margin-bottom: 0.5rem;
+}
+
+.auth-subtitle {
+    font-size: 0.95rem;
+    color: var(--color-text-muted);
+    margin-bottom: 2rem;
+    line-height: 1.5;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    text-align: left; /* Inputs alineados a la izquierda */
+}
+
+/* Reutilizamos el estilo de input global pero con ajuste de ancho */
+.auth-input {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    background-color: #f8fafc;
+    transition: all 0.2s;
+    color: var(--color-text-main);
+}
+
+.auth-input:focus {
+    outline: none;
+    background-color: #fff;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(15, 108, 201, 0.1);
+}
+
+/* Botón principal de Auth (ancho completo) */
+.btn-auth {
+    background: linear-gradient(135deg, #0f6cc9 0%, #0b55a0 100%);
+    color: white;
+    padding: 0.85rem;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+.btn-auth:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(15, 108, 201, 0.3);
+}
+
+/* Checkbox container */
+.auth-options {
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+}
+
+/* Links */
+.auth-footer {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #f1f5f9;
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+}
+
+.auth-link {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.auth-link:hover {
+    text-decoration: underline;
+}
