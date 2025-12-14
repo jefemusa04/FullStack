@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { toast } from 'react-toastify';
+import StudentCreationForm from '../../components/docente/StudentCreationForm';
 
 export default function AlumnosPage() {
     const [showForm, setShowForm] = useState(false);
@@ -15,15 +17,32 @@ export default function AlumnosPage() {
 
     const handleSaveStudent = (e) => {
         e.preventDefault();
+        
+        // Simulación de guardado
         const id = alumnos.length + 1;
         setAlumnos([...alumnos, { ...newStudent, id, estado: 'Activo' }]);
+
+        // --- MENSAJE BONITO (TOAST) ---
+        toast.success(
+            <div>
+                <strong>¡Alumno Registrado!</strong>
+                <div style={{ fontSize: '0.9em', marginTop: '4px' }}>
+                    El estudiante <b>{newStudent.nombre}</b> ha sido matriculado correctamente en <b>{newStudent.grupo}</b>.
+                </div>
+            </div>,
+            {
+                icon: "👤" // Icono de usuario para diferenciar
+            }
+        );
+
+        // Limpiar y cerrar
         setNewStudent({ nombre: '', email: '', grupo: '' });
         setShowForm(false);
     };
 
     return (
         <div className="page-container">
-            {/* 1. HEADER (Igual a Calificaciones) */}
+            {/*HEADER */}
             <div className="page-header">
                 <div>
                     <h1 className="page-title">👥 Gestión de Estudiantes</h1>
@@ -37,61 +56,14 @@ export default function AlumnosPage() {
                 </button>
             </div>
 
-            {/* 2. FORMULARIO DE CREACIÓN (Integrado visualmente) */}
+            {/*FORMULARIO DE CREACIÓN */}
             {showForm && (
                 <div className="form-container-global">
-                    <div className="form-header-global">
-                        <h2 className="form-title-global">Nuevo Estudiante</h2>
-                        <p className="form-subtitle-global">Ingresa los datos para matricular a un alumno.</p>
-                    </div>
-                    <form onSubmit={handleSaveStudent}>
-                        <div className="form-grid-global">
-                            <div>
-                                <label className="label-global">Nombre Completo</label>
-                                <input 
-                                    type="text" 
-                                    className="input-global" 
-                                    placeholder="Ej: Ana Torres"
-                                    value={newStudent.nombre}
-                                    onChange={e => setNewStudent({...newStudent, nombre: e.target.value})}
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="label-global">Correo Institucional</label>
-                                <input 
-                                    type="email" 
-                                    className="input-global" 
-                                    placeholder="ana@escuela.edu"
-                                    value={newStudent.email}
-                                    onChange={e => setNewStudent({...newStudent, email: e.target.value})}
-                                    required
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="label-global">Asignar Grupo</label>
-                            <select 
-                                className="input-global"
-                                value={newStudent.grupo}
-                                onChange={e => setNewStudent({...newStudent, grupo: e.target.value})}
-                                required
-                            >
-                                <option value="">Selecciona un grupo...</option>
-                                <option value="Matemáticas I">Matemáticas I</option>
-                                <option value="Historia Universal">Historia Universal</option>
-                                <option value="Programación Web">Programación Web</option>
-                            </select>
-                        </div>
-                        <div className="flex justify-end gap-3 mt-6">
-                            <button type="button" onClick={() => setShowForm(false)} className="btn btn-cancel">Cancelar</button>
-                            <button type="submit" className="btn btn-create">💾 Guardar Alumno</button>
-                        </div>
-                    </form>
+                    <StudentCreationForm />
                 </div>
             )}
 
-            {/* 3. STATS (Igual a Calificaciones) */}
+            {/*STATS */}
             <div className="stats-row">
                 <div className="stat-card-global">
                     <div className="stat-icon-global">👥</div>
@@ -116,7 +88,7 @@ export default function AlumnosPage() {
                 </div>
             </div>
 
-            {/* 4. TABLA (Igual a Calificaciones) */}
+            {/* 4. TABLA */}
             <div className="data-container-global">
                 <div className="data-header-global">
                     <h2 className="data-title-global">Directorio de Alumnos</h2>

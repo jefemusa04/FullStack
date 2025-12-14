@@ -2,7 +2,7 @@
 
 :root {
     /* PALETA MOODLE / ACADÉMICA */
-    --color-primary: #0f6cc9;       /* Azul Moodle Principal */
+    --color-primary: #0f6cc9;       /* Azul Principal */
     --color-primary-dark: #0b55a0;  /* Azul oscuro hover */
     --color-secondary: #f98012;     /* Naranja Acción (Botones importantes) */
     
@@ -39,6 +39,7 @@ body {
 /* --- LAYOUT PRINCIPAL --- */
 .app-container {
     display: flex;
+    flex-direction: column;
     min-height: 100vh;
     background-color: var(--color-bg-body);
 }
@@ -59,6 +60,81 @@ body {
     justify-content: flex-end;
     align-items: center;
     height: 60px;
+}
+
+/* Topbar global (reemplaza la sidebar lateral en versión superior) */
+.topbar {
+    background: linear-gradient(135deg, #0f6cc9 0%, #0b55a0 100%);
+    color: white;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 2rem; /* more horizontal padding to center content away from edges */
+    height: 64px;
+    box-shadow: 0 1px 6px rgba(11,85,160,0.06);
+    z-index: 1000;
+}
+.topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding-left: 6px; /* nudges logo/text a la derecha un poco */
+}
+.topbar-logo .sidebar-logo-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.05rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.12);
+    color: white;
+}
+.sidebar-logo-title { color: white; font-weight: 700; font-size: 1rem; }
+.sidebar-logo-text { display: flex; align-items: center; gap: 8px; color: white; }
+.topbar-nav {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex: 1;
+    justify-content: center;
+    overflow-x: auto;
+}
+.topbar-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.8rem;
+    color: rgba(255,255,255,0.9);
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: background 0.15s, color 0.15s;
+}
+.topbar-link:hover {
+    background: rgba(255,255,255,0.08);
+    color: white;
+}
+.topbar-link.active {
+    color: white;
+    border-bottom: 3px solid rgba(255,255,255,0.18);
+}
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-right: 6px; /* nudges user area hacia el centro */
+}
+.topbar-user-info { display: flex; align-items: center; gap: 0.6rem; }
+.sidebar-user-name, .sidebar-user-role { color: white; }
+.sidebar-logout { background: rgba(255,255,255,0.08); color: white; border: 1px solid rgba(255,255,255,0.06); }
+.sidebar-logout:hover { background: rgba(255,255,255,0.18); }
+
+@media (max-width: 768px) {
+    .topbar-nav { justify-content: flex-start; padding-left: 8px; }
 }
 
 .main-content-inner {
@@ -420,9 +496,9 @@ body {
   }
 }
 
-/* =========================================
+/*
    SISTEMA DE BOTONES DE ACCIÓN (Forms & Nav)
-   ========================================= */
+*/
 
 /* Clase Base para todos los botones nuevos */
 .btn {
@@ -448,7 +524,7 @@ body {
     box-shadow: none;
 }
 
-/* --- 1. BOTÓN CREAR (Verde Académico) --- */
+/* BOTÓN CREAR (Verde Académico) */
 /* Ideal para el "Submit" de crear tarea */
 .btn-create {
     background-color: var(--color-success); /* #399b2e */
@@ -462,7 +538,7 @@ body {
     transform: translateY(-1px);
 }
 
-/* --- 2. BOTÓN EDITAR (Naranja de Acción) --- */
+/* BOTÓN EDITAR */
 /* Ideal para ir a la página de edición o guardar cambios de edición */
 .btn-edit-action {
     background-color: var(--color-secondary); /* #f98012 */
@@ -476,7 +552,7 @@ body {
     transform: translateY(-1px);
 }
 
-/* --- 3. BOTÓN CANCELAR (Gris -> Rojo) --- */
+/* BOTÓN CANCELAR*/
 /* Estilo sutil para no distraer, se pone rojo al pasar el mouse */
 .btn-cancel {
     background-color: white;
@@ -490,7 +566,7 @@ body {
     border-color: var(--color-danger);
 }
 
-/* --- 4. BOTÓN VOLVER ATRÁS (Gris Oscuro / Neutro) --- */
+/* BOTÓN VOLVER ATRÁS*/
 /* Sólido para navegación */
 .btn-back {
     background-color: #475569; /* Gris pizarra profesional */
@@ -503,9 +579,9 @@ body {
     transform: translateX(-3px); /* Efecto visual de "regresar" a la izquierda */
 }
 
-/* =========================================
+/* 
    ESTILOS PARA EL DASHBOARD (TARJETAS DE CURSOS)
-   ========================================= */
+*/
 
 /* Contenedor de la cuadrícula (Grid) */
 .courses-grid {
@@ -694,10 +770,6 @@ body {
     background-color: var(--color-success);
     border-radius: 3px;
 }
-
-/* =========================================
-   ESTILOS TIPO MOODLE (NUEVO)
-   ========================================= */
 
 /* Layout principal de 2 columnas */
 .course-layout {
@@ -1280,9 +1352,9 @@ body {
     transform: scale(1.1);
 }
 
-/* ==============================================================================
-   👨‍🎓 ESTILOS PARA PÁGINA DE ALUMNOS
-   ============================================================================== */
+/* 
+   ESTILOS PARA PÁGINA DE ALUMNOS
+*/
 .alumnos-page {
     padding: 2rem;
     background-color: var(--color-bg-body);
@@ -1573,9 +1645,9 @@ body {
     color: var(--color-danger);
 }
 
-/* ==============================================================================
-   💬 ESTILOS PARA PÁGINA DE MENSAJES
-   ============================================================================== */
+/* 
+   ESTILOS PARA PÁGINA DE MENSAJES
+*/
 .mensajes-page {
     padding: 2rem;
     background-color: var(--color-bg-body);
@@ -1915,9 +1987,9 @@ body {
     }
 }
 
-/* =========================================
+/* 
    ESTÁNDAR GLOBAL DE PÁGINAS (Basado en Calificaciones)
-   ========================================= */
+ */
 
 .page-container {
     padding: 2rem;
@@ -1953,7 +2025,9 @@ body {
     margin: 0;
 }
 
-/* --- TARJETAS DE ESTADÍSTICAS (STATS ROW) --- */
+/* 
+    TARJETAS DE ESTADÍSTICAS (STATS ROW)
+*/
 .stats-row {
     display: flex;
     gap: 1.5rem;
@@ -2022,7 +2096,9 @@ body {
     margin-top: 0.25rem;
 }
 
-/* --- CONTENEDOR DE DATOS / TABLA --- */
+/* 
+    CONTENEDOR DE DATOS / TABLA 
+*/
 .data-container-global {
     background: white;
     border-radius: 16px;
@@ -2135,9 +2211,9 @@ body {
     background: #fff5f5;
 }
 
-/* =========================================
+/* 
    ESTÁNDAR DE FORMULARIOS Y MODALES (CONGRUENCIA VISUAL)
-   ========================================= */
+*/
 
 /* Contenedor del formulario (Tarjeta blanca limpia) */
 .form-container-global {
@@ -2204,6 +2280,28 @@ body {
     gap: 1.5rem;
 }
 
+/* Acciones de formulario: ocupar ambas columnas y alinear botones a la derecha */
+.form-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+/* Separación global entre botones cuando están juntos */
+.btn + .btn {
+    margin-left: 0.75rem;
+}
+
+/* Ajustes de tamaño para botones de confirmación */
+.btn {
+    padding: 0.55rem 0.95rem;
+}
+.btn-create {
+    min-width: 120px;
+}
+
 @media (max-width: 768px) {
     .form-grid-global { grid-template-columns: 1fr; }
 }
@@ -2227,9 +2325,9 @@ body {
 .badge-pill.warning { background: #fefce8; color: #ca8a04; border: 1px solid #fde047; }
 .badge-pill.blue    { background: #eff6ff; color: #2563eb; border: 1px solid #dbeafe; }
 
-/* =========================================
+/* 
    CONTENEDOR DE ACCIONES (Fila Horizontal)
-   ========================================= */
+*/
 
 .actions-row-global {
     display: flex;             /* Activa Flexbox */
@@ -2244,4 +2342,124 @@ body {
 .table-global td.actions-cell {
     width: 1%;                 /* Ocupa el mínimo espacio necesario */
     white-space: nowrap;
+}
+
+/* 
+   SIDEBAR / WEEKS INDEX
+ */
+.weeks-sidebar {
+    background: transparent;
+}
+.week-tab-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(11,59,102,0.12);
+}
+.week-button {
+    display:block;
+    width:100%;
+    text-align:left;
+    padding:10px 12px;
+    border-radius:10px;
+    background: transparent;
+    color: var(--color-text-main);
+    border: 1px solid transparent;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
+}
+.week-button:hover {
+    background:#f8fafc;
+    border-color: var(--border-color);
+    transform: translateY(-1px);
+}
+.week-button.selected {
+    background:#fbfdff;
+    border:1px solid #e6eef8;
+}
+.week-group {
+    margin-bottom:16px;
+    padding:12px;
+    border-radius:8px;
+    background: #fff;
+}
+.week-group .week-title {
+    font-weight:700;
+    color: var(--color-text-main);
+    margin-bottom:8px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+.week-item {
+    padding:12px;
+    border-bottom:1px solid #f1f5f9;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background: transparent;
+}
+.week-item .info { color: #374151; }
+.week-count { font-size:0.85rem; color: #6b7280; }
+
+/* Topbar dropdown box */
+/* Topbar dropdown removed — sidebar reverted to left */
+
+/* Modal básico */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(11,59,102,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+.modal-box {
+    background: #fff;
+    border-radius: 12px;
+    width: min(820px, 95%);
+    max-height: 85vh;
+    overflow: auto;
+    box-shadow: 0 12px 40px rgba(2,6,23,0.2);
+}
+.modal-header { display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid var(--border-color); }
+.modal-title { margin:0; font-size:1.25rem; }
+.modal-close { background:transparent; border:none; font-size:18px; cursor:pointer; }
+.modal-body { padding:16px 20px; color:var(--color-text-main); }
+
+/*
+   BOTÓN TIPO CHIP / FILTRO (Para "Ver todas")
+*/
+.btn-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 1rem;
+    background-color: white;
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary); /* Borde azul institucional */
+    border-radius: 50px; /* Completamente redondo */
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 0.75rem;
+    text-decoration: none;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.btn-chip:hover {
+    background-color: var(--color-primary);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(15, 108, 201, 0.2);
+}
+
+.btn-chip:active {
+    transform: translateY(0);
 }

@@ -80,7 +80,6 @@ export default function RegisterPage() {
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
           />
-          {/* Tooltip o ayuda visual simple en el placeholder */}
           <input
             type="password"
             className="auth-input"

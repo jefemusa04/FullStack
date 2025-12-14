@@ -1,18 +1,32 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-toastify'; 
 
 const Dashboard = () => {
     const { user } = useAuth();
     const isDocente = user?.rol === 'docente';
 
-    const grupos = [
+    // Estado para manejar la navegación interna
+    const [view, setView] = useState('dashboard'); // 'dashboard' | 'create-group'
+
+    // Datos iniciales simulados
+    const [grupos, setGrupos] = useState([
         { id: 'g1', nombre: 'Matemáticas I', codigo: 'MAT101', alumnos: 25, tareasPendientes: 2 },
         { id: 'g2', nombre: 'Historia Universal', codigo: 'HIS202', alumnos: 18, tareasPendientes: 0 },
         { id: 'g3', nombre: 'Programación Web', codigo: 'WEB303', alumnos: 30, tareasPendientes: 5 },
-    ];
+    ]);
 
-    const getCardColor = (index) => {
+    // Estado del Formulario
+    const [newGroup, setNewGroup] = useState({
+        nombre: '',
+        clave: '',
+        descripcion: ''
+    });
+
+    // --- MANEJADORES ---
+
+    const handleCardColor = (index) => {
         const colors = [
             'linear-gradient(135deg, #0f6cc9 0%, #0b55a0 100%)',
             'linear-gradient(135deg, #f98012 0%, #d66e0f 100%)',
@@ -21,6 +35,110 @@ const Dashboard = () => {
         return colors[index % colors.length];
     };
 
+    const handleCreateGroup = (e) => {
+        e.preventDefault();
+        
+        // Simulación de guardado
+        const nuevo = {
+            id: Date.now().toString(),
+            nombre: newGroup.nombre,
+            codigo: newGroup.clave,
+            alumnos: 0,
+            tareasPendientes: 0
+        };
+        
+        setGrupos([...grupos, nuevo]);
+        
+        // --- MENSAJE BONITO (TOAST) ---
+        toast.success(
+            <div>
+                <strong>¡Materia Creada!</strong>
+                <div style={{ fontSize: '0.9em', marginTop: '4px' }}>
+                    El grupo <b>{newGroup.nombre}</b> se ha registrado correctamente.
+                </div>
+            </div>,
+            {
+                icon: "🎓" // Icono personalizado
+            }
+        );
+
+        setNewGroup({ nombre: '', clave: '', descripcion: '' }); // Limpiar formulario
+        setView('dashboard'); // Volver al inicio
+    };
+
+    // --- VISTA: FORMULARIO DE CREAR GRUPO (Solo Docente) ---
+    if (view === 'create-group' && isDocente) {
+        return (
+            <div className="page-container">
+                <div className="page-header">
+                    <div>
+                        <h1 className="page-title">➕ Crear Nuevo Grupo</h1>
+                        <p className="page-subtitle">Da de alta una nueva materia o grupo para tus alumnos.</p>
+                    </div>
+                    <button onClick={() => setView('dashboard')} className="btn btn-cancel">
+                        ← Volver al Dashboard
+                    </button>
+                </div>
+
+                <div className="form-container-global">
+                    <div className="form-header-global">
+                        <h2 className="form-title-global">Datos del Grupo</h2>
+                    </div>
+                    <form onSubmit={handleCreateGroup}>
+                        {/* Fila 1: Nombre y Clave */}
+                        <div className="form-grid-global">
+                            <div>
+                                <label className="label-global">Nombre del Grupo (Ej: Matemáticas V)</label>
+                                <input 
+                                    type="text" 
+                                    className="input-global" 
+                                    value={newGroup.nombre}
+                                    onChange={(e) => setNewGroup({...newGroup, nombre: e.target.value})}
+                                    placeholder="Nombre de la materia"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="label-global">Clave Única (Ej: MAT501-A)</label>
+                                <input 
+                                    type="text" 
+                                    className="input-global" 
+                                    value={newGroup.clave}
+                                    onChange={(e) => setNewGroup({...newGroup, clave: e.target.value})}
+                                    placeholder="Código identificador"
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        {/* Fila 2: Descripción */}
+                        <div>
+                            <label className="label-global">Descripción (Opcional)</label>
+                            <textarea 
+                                className="input-global" 
+                                rows="4" 
+                                value={newGroup.descripcion}
+                                onChange={(e) => setNewGroup({...newGroup, descripcion: e.target.value})}
+                                placeholder="Breve descripción del curso..."
+                            ></textarea>
+                        </div>
+
+                        {/* Botones de Acción */}
+                        <div className="flex justify-end gap-3 mt-6">
+                            <button type="button" onClick={() => setView('dashboard')} className="btn btn-cancel">
+                                Cancelar
+                            </button>
+                            <button type="submit" className="btn btn-create">
+                                + Crear Grupo
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        );
+    }
+
+    // --- VISTA: DASHBOARD PRINCIPAL ---
     return (
         <div className="page-container">
             {/* Header Estándar */}
@@ -33,7 +151,13 @@ const Dashboard = () => {
                         {isDocente ? 'Panel de control docente' : 'Panel de control estudiantil'}
                     </p>
                 </div>
-                {/* Botón opcional o vacío */}
+                
+                {/* Botón para crear materia (Solo visible para docentes) */}
+                {isDocente && (
+                    <button onClick={() => setView('create-group')} className="btn btn-create">
+                        ➕ Agregar Materia
+                    </button>
+                )}
             </div>
 
             {/* Stats Row Estándar */}
@@ -63,7 +187,7 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* Contenedor de Cursos (Mantiene el Grid pero con título estándar) */}
+            {/* Contenedor de Cursos */}
             <div className="mb-8">
                 <h2 className="data-title-global mb-4 flex items-center gap-2">
                     <span className="text-xl">📖</span> Cursos Recientes
@@ -79,7 +203,7 @@ const Dashboard = () => {
                         >
                             <div 
                                 className="course-image-pattern" 
-                                style={{ background: getCardColor(index) }}
+                                style={{ background: handleCardColor(index) }}
                             >
                                 <div className="course-overlay"></div>
                             </div>

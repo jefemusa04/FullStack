@@ -1,5 +1,3 @@
-// src/components/MainLayout.jsx - CORREGIDO (USANDO CLASES CSS PURO)
-
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';

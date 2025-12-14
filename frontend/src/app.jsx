@@ -1,5 +1,3 @@
-// src/App.jsx (Router FINAL CONSOLIDADO)
-
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
@@ -14,7 +12,7 @@ import RegisterPage from "./pages/auth/RegisterPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage"; 
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage"; 
 
-// Importar los archivos CONSOLIDADOS (Asegúrate de que existan en src/pages/)
+// Componentes de Páginas Principales
 import Dashboard from './pages/Dashboard';
 import Tareas from './pages/Tareas';
 import Calificaciones from './pages/Calificaciones';
@@ -24,32 +22,30 @@ import Alumnos from './pages/docente/Alumnos';
 import Mensajes from './pages/Mensajes'; 
 
 
-// -------------------------------------------------------------------
-// Componente de Redirección (CORREGIDO: Solo redirige a /dashboard)
+
+// Componente de Redirección 
 function PrivateRouteRedir() {
     const { user } = useAuth(); 
     
     // Si no está logueado, lo manda a login (aunque esto lo hace el PrivateRoute padre)
     if (!user) return <Navigate to="/login" replace />; 
 
-    // 🛑 Redirige a la ruta genérica CONSOLIDADA
+    
     return <Navigate to="/dashboard" replace />;
 }
-// -------------------------------------------------------------------
-
 
 export default function App() {
   return (
     <>
       <Routes>
-        {/* 1. RUTAS PÚBLICAS */}
+        {/*RUTAS PÚBLICAS */}
         <Route path="/" element={<PrivateRouteRedir />} /> {/* Redirige a /dashboard si está logueado */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-        {/* 2. GRUPO DE RUTAS PROTEGIDAS (Requiere Autenticación) */}
+        {/* GRUPO DE RUTAS PROTEGIDAS (Requiere Autenticación) */}
         <Route element={<PrivateRoute />}>
           <Route element={<MainLayout />}>
 
@@ -67,7 +63,7 @@ export default function App() {
           </Route>
         </Route>
 
-        {/* 6. CATCH-ALL (404) */}
+        {/*CATCH-ALL (404) */}
         <Route path="*" element={<h2 style={{ padding: 20 }}>404 - Página no encontrada</h2>} />
       </Routes>
 

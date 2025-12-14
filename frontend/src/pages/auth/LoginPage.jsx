@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom"; // Usar Link es mejor que <a> en React
+import { useNavigate, Link } from "react-router-dom"; 
 import { useAuth } from "../../hooks/userAuth"; 
 import { toast } from "react-toastify";
-import '../../styles/auth.css'; // Asegúrate de que este archivo tenga el CSS nuevo
+import '../../styles/auth.css'; 
 
 const REMEMBER_EMAIL_KEY = 'rememberedEmail';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({ email: "", password: "" });
@@ -42,6 +42,13 @@ export default function LoginPage() {
         toast.error(res.message || "Credenciales incorrectas");
     }
   };
+
+  // Si ya hay un usuario en el contexto, redirigir automáticamente al dashboard
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, navigate]);
 
   return (
     <div className="auth-wrapper">
@@ -89,7 +96,7 @@ export default function LoginPage() {
 
         <div className="auth-footer">
           <p className="mb-2">
-            <Link to="/forgot-password" class="auth-link text-sm text-gray-500 hover:text-blue-600">
+            <Link to="/forgot-password" className="auth-link text-sm text-gray-500 hover:text-blue-600">
                 ¿Olvidaste tu contraseña?
             </Link> 
           </p> 

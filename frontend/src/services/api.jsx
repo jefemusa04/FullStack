@@ -4,7 +4,6 @@ const api = axios.create({
   baseURL: "http://localhost:4000/api",
 });
 
-// Interceptor para token (opcional pero pro)
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
