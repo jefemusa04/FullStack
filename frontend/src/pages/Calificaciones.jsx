@@ -32,7 +32,7 @@ const Calificaciones = () => {
     };
 
     if (isDocente) {
-    return (
+        return (
             <div className="calificaciones-page">
                 <div className="calificaciones-header">
                     <div>
@@ -41,7 +41,7 @@ const Calificaciones = () => {
                     </div>
                     <button className="btn btn-create">
                         📄 Exportar PDF
-                                    </button>
+                    </button>
                 </div>
 
                 <div className="calificaciones-stats">
@@ -76,9 +76,9 @@ const Calificaciones = () => {
                     <div className="calificaciones-table-header">
                         <h2 className="calificaciones-table-title">Lista de Calificaciones</h2>
                         <div className="calificaciones-table-actions">
-                            <input 
-                                type="text" 
-                                placeholder="Buscar..." 
+                            <input
+                                type="text"
+                                placeholder="Buscar..."
                                 className="calificaciones-search-input"
                             />
                             <select className="calificaciones-filter-select">
@@ -89,7 +89,7 @@ const Calificaciones = () => {
                             </select>
                         </div>
                     </div>
-                    
+
                     <div className="calificaciones-table-wrapper">
                         <table className="calificaciones-table">
                             <thead>
@@ -130,11 +130,11 @@ const Calificaciones = () => {
                                                 <div className="calificaciones-actions">
                                                     <button className="calificaciones-action-btn" title="Editar">
                                                         ✏️
-                                </button>
+                                                    </button>
                                                     <button className="calificaciones-action-btn" title="Ver detalles">
                                                         👁️
-                                </button>
-                            </div>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -143,8 +143,8 @@ const Calificaciones = () => {
                         </table>
                     </div>
                 </div>
-        </div>
-    );
+            </div>
+        );
     }
 
     // Vista Estudiante
@@ -170,13 +170,13 @@ const Calificaciones = () => {
                     <div className="calificaciones-stat-info">
                         <div className="calificaciones-stat-value">{misCalificaciones.length}</div>
                         <div className="calificaciones-stat-label">Tareas Calificadas</div>
-                        </div>
+                    </div>
                 </div>
             </div>
 
             <div className="calificaciones-table-container">
                 <h2 className="calificaciones-table-title">Historial de Calificaciones</h2>
-                
+
                 <div className="calificaciones-table-wrapper">
                     <table className="calificaciones-table">
                         <thead>
@@ -186,8 +186,8 @@ const Calificaciones = () => {
                                 <th>Calificación</th>
                                 <th>Fecha</th>
                                 <th>Comentario</th>
-                        </tr>
-                    </thead>
+                            </tr>
+                        </thead>
                         <tbody>
                             {misCalificaciones.map(cal => {
                                 const colorClass = getCalificacionColor(cal.calificacion, cal.maxPuntos);
@@ -202,14 +202,14 @@ const Calificaciones = () => {
                                                 <span className="calificaciones-grade-value">{cal.calificacion}</span>
                                                 <span className="calificaciones-grade-max">/ {cal.maxPuntos}</span>
                                             </div>
-                                </td>
+                                        </td>
                                         <td className="calificaciones-date">{cal.fecha}</td>
                                         <td className="calificaciones-comment">{cal.comentario || '-'}</td>
-                            </tr>
+                                    </tr>
                                 );
                             })}
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

@@ -1,5 +1,3 @@
-// src/components/Table.jsx
-
 import React from 'react';
 
 /**
