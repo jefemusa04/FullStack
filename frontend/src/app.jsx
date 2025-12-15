@@ -1,6 +1,9 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { ToastContainer } from "react-toastify";
+
+/*import * as ReactToastify from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';*/
+
 // Componentes de Layout y Protección
 import PrivateRoute from "./components/PrivateRoute"; 
 import MainLayout from "./components/MainLayout"; 
@@ -67,7 +70,8 @@ export default function App() {
         <Route path="*" element={<h2 style={{ padding: 20 }}>404 - Página no encontrada</h2>} />
       </Routes>
 
-      <ToastContainer position="top-right" autoClose={3000} />
+        {/*<ReactToastify.ToastContainer position="top-right" autoClose={3000} />*/}
+
     </>
   );
 }

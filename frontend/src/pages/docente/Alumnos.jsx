@@ -141,7 +141,6 @@ export default function AlumnosPage() {
                                     </td>
                                         <td>
                                         <div className="actions-row-global">
-                                            <button className="action-btn-global" title="Editar" onClick={() => handleEdit(alumno)}>✏️</button>
                                             <button className="action-btn-global delete" title="Eliminar" onClick={() => handleDelete(alumno.id)}>🗑️</button>
                                         </div>
                                     </td>

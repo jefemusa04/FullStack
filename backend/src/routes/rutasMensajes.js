@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { obtenerMensajes, enviarMensaje } = require('../controladores/controladorMensajes');
-const { proteger } = require('../middleware/authMiddleware');
+const { obtenerMensajes, enviarMensaje } = require('../controllers/controladorMensajes');
+const { proteger } = require('../middlewares/authMiddleware');
 
 // POST /api/mensajes -> Enviar un nuevo mensaje
 router.post('/', proteger, enviarMensaje);

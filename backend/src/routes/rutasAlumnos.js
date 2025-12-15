@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { obtenerAlumnosPorGrupo, agregarAlumnoAGrupo, eliminarAlumnoDeGrupo } = require('../controladores/controladorAlumnos');
-const { proteger } = require('../middleware/authMiddleware');
+const { obtenerAlumnosPorGrupo, agregarAlumnoAGrupo, eliminarAlumnoDeGrupo } = require('../controllers/controladorAlumnos');
+const { proteger } = require('../middlewares/authMiddleware');
 
 // RUTAS DE GESTIÓN DE MATRÍCULA (DOCENTE)
 // GET /api/alumnos/grupo/:grupoId -> Obtener todos los alumnos de un grupo

@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const asyncHandler = require('express-async-handler');
-const Usuario = require('../models/Usuario'); // <--- CORREGIDO: De ModeloUsuario a Usuario
+const Usuario = require('../models/Usuario'); 
 
 /**
  * Middleware para verificar la existencia y validez de un token JWT en la cabecera.
@@ -9,11 +9,11 @@ const Usuario = require('../models/Usuario'); // <--- CORREGIDO: De ModeloUsuari
 const proteger = asyncHandler(async (req, res, next) => {
     let token;
 
-    // 1. Verificar la cabecera de autorización y el formato Bearer
+    // Verificar la cabecera de autorización y el formato Bearer
     // La cabecera debe ser: Authorization: Bearer <TOKEN>
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
         try {
-            // 2. Obtener el token (quitar "Bearer ")
+            // Obtener el token (quitar "Bearer ")
             token = req.headers.authorization.split(' ')[1];
 
             // 3. Verificar y Decodificar el token usando la clave secreta

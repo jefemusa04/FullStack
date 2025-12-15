@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 // Renombramos las funciones importadas para que coincidan con la exportación del controlador
-const { registro, login, obtenerUsuarioActual } = require('../controladores/controladorUsuarios');
-const { proteger } = require('../middleware/authMiddleware');
+const { registro, login, obtenerUsuarioActual } = require('../controllers/controladorUsuarios');
+const { proteger } = require('../middlewares/authMiddleware');
 
 // La ruta raíz '/' en este archivo se traduce a /api/usuarios
 // 1. REGISTRO (POST /api/usuarios)
