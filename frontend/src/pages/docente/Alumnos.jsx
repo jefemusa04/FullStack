@@ -14,6 +14,7 @@ export default function AlumnosPage() {
         { id: 2, nombre: 'María Gómez', email: 'maria@example.com', grupo: 'Historia Universal', estado: 'Activo' },
         { id: 3, nombre: 'Pedro López', email: 'pedro@example.com', grupo: 'Programación Web', estado: 'Inactivo' },
     ]);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const handleSaveStudent = (e) => {
         e.preventDefault();
@@ -38,6 +39,23 @@ export default function AlumnosPage() {
         // Limpiar y cerrar
         setNewStudent({ nombre: '', email: '', grupo: '' });
         setShowForm(false);
+    };
+
+    const filtered = alumnos.filter(a => {
+        const t = searchTerm.trim().toLowerCase();
+        if (!t) return true;
+        return `${a.nombre} ${a.email} ${a.grupo}`.toLowerCase().includes(t);
+    });
+
+    const handleDelete = (id) => {
+        if (!window.confirm('¿Eliminar este alumno?')) return;
+        setAlumnos(alumnos.filter(a => a.id !== id));
+    };
+
+    const handleEdit = (al) => {
+        const nuevoNombre = window.prompt('Nuevo nombre', al.nombre);
+        if (!nuevoNombre) return;
+        setAlumnos(alumnos.map(a => a.id === al.id ? { ...a, nombre: nuevoNombre } : a));
     };
 
     return (
@@ -72,13 +90,6 @@ export default function AlumnosPage() {
                         <div className="stat-label-global">Total Matriculados</div>
                     </div>
                 </div>
-                <div className="stat-card-global highlight">
-                    <div className="stat-icon-global">✅</div>
-                    <div className="stat-info-global">
-                        <div className="stat-value-global">{alumnos.filter(a => a.estado === 'Activo').length}</div>
-                        <div className="stat-label-global">Usuarios Activos</div>
-                    </div>
-                </div>
                 <div className="stat-card-global">
                     <div className="stat-icon-global">🎓</div>
                     <div className="stat-info-global">
@@ -93,7 +104,7 @@ export default function AlumnosPage() {
                 <div className="data-header-global">
                     <h2 className="data-title-global">Directorio de Alumnos</h2>
                     <div className="data-controls-global">
-                        <input type="text" placeholder="🔍 Buscar estudiante..." className="global-search-input" />
+                        <input type="text" placeholder="🔍 Buscar estudiante..." className="global-search-input" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                     </div>
                 </div>
 
@@ -109,7 +120,7 @@ export default function AlumnosPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {alumnos.map((alumno) => (
+                            {filtered.map((alumno) => (
                                 <tr key={alumno.id}>
                                     <td>
                                         <div className="flex items-center gap-3">
@@ -128,10 +139,10 @@ export default function AlumnosPage() {
                                             {alumno.estado}
                                         </span>
                                     </td>
-                                    <td>
+                                        <td>
                                         <div className="actions-row-global">
-                                            <button className="action-btn-global" title="Editar">✏️</button>
-                                            <button className="action-btn-global delete" title="Eliminar">🗑️</button>
+                                            <button className="action-btn-global" title="Editar" onClick={() => handleEdit(alumno)}>✏️</button>
+                                            <button className="action-btn-global delete" title="Eliminar" onClick={() => handleDelete(alumno.id)}>🗑️</button>
                                         </div>
                                     </td>
                                 </tr>

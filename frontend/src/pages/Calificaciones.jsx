@@ -6,7 +6,7 @@ const Calificaciones = () => {
     const isDocente = user?.rol === 'docente';
 
     // Datos simulados
-    const [calificaciones] = useState([
+    const [calificaciones, setCalificaciones] = useState([
         { id: 1, estudiante: 'Juan Pérez', tarea: 'Ensayo Final', grupo: 'Matemáticas I', calificacion: 85, maxPuntos: 100, fecha: '2025-12-20' },
         { id: 2, estudiante: 'María Gómez', tarea: 'Presentación Oral', grupo: 'Historia Universal', calificacion: 92, maxPuntos: 100, fecha: '2025-12-18' },
         { id: 3, estudiante: 'Pedro López', tarea: 'Proyecto Final', grupo: 'Programación Web', calificacion: 78, maxPuntos: 100, fecha: '2025-12-15' },
@@ -16,6 +16,36 @@ const Calificaciones = () => {
         { id: 1, tarea: 'Ensayo Final', grupo: 'Matemáticas I', calificacion: 85, maxPuntos: 100, fecha: '2025-12-20', comentario: 'Buen trabajo' },
         { id: 2, tarea: 'Presentación Oral', grupo: 'Historia Universal', calificacion: 92, maxPuntos: 100, fecha: '2025-12-18', comentario: 'Excelente presentación' },
     ]);
+
+    // Búsqueda y filtros
+    const [searchTerm, setSearchTerm] = useState('');
+    const [groupFilter, setGroupFilter] = useState('');
+
+    // Modal edición
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [editing, setEditing] = useState(null);
+
+    const openEdit = (cal) => { setEditing({ ...cal }); setEditModalOpen(true); };
+    const closeEdit = () => { setEditing(null); setEditModalOpen(false); };
+
+    const handleSaveEdit = (e) => {
+        e.preventDefault();
+        if (!editing) return;
+        setCalificaciones(calificaciones.map(c => c.id === editing.id ? editing : c));
+        closeEdit();
+    };
+
+    const handleDelete = (id) => {
+        if (!window.confirm('¿Eliminar esta calificación?')) return;
+        setCalificaciones(calificaciones.filter(c => c.id !== id));
+    };
+
+    const filteredCalificaciones = calificaciones.filter(c => {
+        const term = searchTerm.trim().toLowerCase();
+        if (groupFilter && c.grupo !== groupFilter) return false;
+        if (!term) return true;
+        return [c.estudiante, c.tarea, c.grupo].join(' ').toLowerCase().includes(term);
+    });
 
     const getCalificacionColor = (calificacion, maxPuntos) => {
         const porcentaje = (calificacion / maxPuntos) * 100;
@@ -80,8 +110,10 @@ const Calificaciones = () => {
                                 type="text"
                                 placeholder="Buscar..."
                                 className="calificaciones-search-input"
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
                             />
-                            <select className="calificaciones-filter-select">
+                            <select className="calificaciones-filter-select" value={groupFilter} onChange={e => setGroupFilter(e.target.value)}>
                                 <option value="">Todos los grupos</option>
                                 <option value="Matemáticas I">Matemáticas I</option>
                                 <option value="Historia Universal">Historia Universal</option>
@@ -103,7 +135,7 @@ const Calificaciones = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {calificaciones.map(cal => {
+                                {filteredCalificaciones.map(cal => {
                                     const colorClass = getCalificacionColor(cal.calificacion, cal.maxPuntos);
                                     return (
                                         <tr key={cal.id}>
@@ -128,11 +160,14 @@ const Calificaciones = () => {
                                             <td className="calificaciones-date">{cal.fecha}</td>
                                             <td>
                                                 <div className="calificaciones-actions">
-                                                    <button className="calificaciones-action-btn" title="Editar">
+                                                    <button className="calificaciones-action-btn" title="Editar" onClick={() => openEdit(cal)}>
                                                         ✏️
                                                     </button>
-                                                    <button className="calificaciones-action-btn" title="Ver detalles">
+                                                    <button className="calificaciones-action-btn" title="Ver detalles" onClick={() => openEdit(cal)}>
                                                         👁️
+                                                    </button>
+                                                    <button className="calificaciones-action-btn" title="Eliminar" onClick={() => handleDelete(cal.id)}>
+                                                        🗑️
                                                     </button>
                                                 </div>
                                             </td>
@@ -143,6 +178,31 @@ const Calificaciones = () => {
                         </table>
                     </div>
                 </div>
+                {/* Modal editar calificación */}
+                {editModalOpen && editing && (
+                    <div className="modal-overlay" onClick={closeEdit}>
+                        <div className="modal-box" onClick={e => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3 className="modal-title">Editar Calificación</h3>
+                                <button className="modal-close" onClick={closeEdit}>✖</button>
+                            </div>
+                            <div className="modal-body">
+                                <form onSubmit={handleSaveEdit}>
+                                    <div style={{display: 'grid', gap: 12}}>
+                                        <div><label className="label-global">Estudiante</label><input className="input-global" value={editing.estudiante} readOnly /></div>
+                                        <div><label className="label-global">Tarea</label><input className="input-global" value={editing.tarea} readOnly /></div>
+                                        <div style={{display:'flex', gap:8}}>
+                                            <div style={{flex:1}}><label className="label-global">Calificación</label><input type="number" className="input-global" value={editing.calificacion} onChange={e => setEditing({...editing, calificacion: Number(e.target.value)})} required /></div>
+                                            <div style={{width:140}}><label className="label-global">Máx. puntos</label><input type="number" className="input-global" value={editing.maxPuntos} onChange={e => setEditing({...editing, maxPuntos: Number(e.target.value)})} required /></div>
+                                        </div>
+                                        <div><label className="label-global">Comentario</label><textarea className="input-global" rows={3} value={editing.comentario || ''} onChange={e => setEditing({...editing, comentario: e.target.value})} /></div>
+                                        <div style={{display:'flex', justifyContent:'flex-end', gap:8}}><button type="button" className="btn btn-cancel" onClick={closeEdit}>Cancelar</button><button type="submit" className="btn btn-create">Guardar</button></div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }
