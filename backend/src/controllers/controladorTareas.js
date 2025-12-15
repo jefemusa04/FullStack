@@ -1,6 +1,6 @@
 const asyncHandler = require('express-async-handler');
-const Tarea = require('../modelos/Tareas'); // Plural: 'Tareas' (según tu confirmación)
-const Grupo = require('../modelos/Grupo');
+const Tarea = require('../models/Tareas'); // Plural: 'Tareas' (según tu confirmación)
+const Grupo = require('../models/Grupo');
 
 // @desc    Obtener todas las tareas relevantes para el usuario
 // @route   GET /api/tareas

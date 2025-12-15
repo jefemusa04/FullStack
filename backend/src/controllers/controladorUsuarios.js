@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const asyncHandler = require('express-async-handler');
-const Usuario = require('../modelos/Usuario'); // <--- CORREGIDO: De ModeloUsuario a Usuario
+const Usuario = require('../models/Usuario'); // <--- CORREGIDO: De ModeloUsuario a Usuario
 
 // Función auxiliar para generar el JWT (JSON Web Token)
 const generarTokenJWT = (id) => {

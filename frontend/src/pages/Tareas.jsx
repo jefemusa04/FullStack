@@ -36,6 +36,12 @@ const TareasVistaDocente = () => {
     ]);
 
     const tareasMostradas = grupoFiltro ? tareas.filter(t => t.grupo === grupoFiltro) : tareas;
+    const [searchTerm, setSearchTerm] = useState('');
+    const tareasFiltradasPorBusqueda = tareasMostradas.filter(t => {
+        const term = searchTerm.trim().toLowerCase();
+        if (!term) return true;
+        return `${t.titulo} ${t.descripcion} ${t.grupo}`.toLowerCase().includes(term);
+    });
 
     // --- LÓGICA DE SEMANAS ---
     const getWeekRangeLabel = (dateStr) => {
@@ -64,7 +70,7 @@ const TareasVistaDocente = () => {
         });
     };
 
-    const grouped = groupByWeek(tareasMostradas);
+    const grouped = groupByWeek(tareasFiltradasPorBusqueda);
     const [selectedWeek, setSelectedWeek] = useState(grouped.length ? grouped[0][0] : null);
     const [showSidebar, setShowSidebar] = useState(true);
     const weekRefs = useRef({});
@@ -241,7 +247,7 @@ const TareasVistaDocente = () => {
                     <div className="data-header-global" style={{padding: '0 6px'}}>
                         <h2 className="data-title-global">{selectedWeek || 'Cronograma de Actividades'}</h2>
                         <div className="data-controls-global">
-                            <input type="text" placeholder="Buscar tarea..." className="global-search-input" />
+                            <input type="text" placeholder="Buscar tarea..." className="global-search-input" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                         </div>
                     </div>
 
@@ -258,8 +264,9 @@ const TareasVistaDocente = () => {
                                             <li key={t._id} style={{padding:16, borderBottom:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#fff', gap: '1rem', flexWrap: 'wrap'}}>
                                                 <div style={{flex: 1}}>
                                                     <div style={{fontWeight:700, color:'#1e293b', fontSize: '1.05rem'}}>{t.titulo}</div>
-                                                    <div style={{fontSize:'0.85rem', color:'#64748b', marginTop: 4}}>{t.grupo} • Puntos: {t.puntuacionMaxima}</div>
-                                                    <div style={{fontSize:'0.85rem', color:'#64748b', marginTop: 2}}>Entrega: {t.fechaEntrega}</div>
+                                                    <div style={{fontSize:'0.9rem', color:'#334155', marginTop:6}} className="task-description">{t.descripcion}</div>
+                                                    <div style={{fontSize:'0.85rem', color:'#64748b', marginTop: 8}}>{t.grupo} • Puntos: {t.puntuacionMaxima}</div>
+                                                    <div style={{fontSize:'0.85rem', color:'#64748b', marginTop: 4}}>Entrega: {t.fechaEntrega}</div>
                                                 </div>
                                                 
                                                 <div className="actions-row-global">
@@ -296,6 +303,12 @@ const TareasVistaEstudiante = ({ user }) => {
     ]);
 
     const tareasFiltradas = grupoFiltro ? tareas.filter(t => t.grupo === grupoFiltro) : tareas;
+    const [searchTerm, setSearchTerm] = useState('');
+    const tareasFiltradasPorBusqueda = tareasFiltradas.filter(t => {
+        const term = searchTerm.trim().toLowerCase();
+        if (!term) return true;
+        return `${t.titulo} ${t.descripcion} ${t.grupo}`.toLowerCase().includes(term);
+    });
 
     // Helpers
     const getWeekRangeLabel = (dateStr) => {
@@ -324,7 +337,7 @@ const TareasVistaEstudiante = ({ user }) => {
         });
     };
 
-    const grouped = groupByWeek(tareasFiltradas);
+    const grouped = groupByWeek(tareasFiltradasPorBusqueda);
     const [selectedWeek, setSelectedWeek] = useState(grouped.length ? grouped[0][0] : null);
     const [showSidebar, setShowSidebar] = useState(true);
     const weekRefs = useRef({});
@@ -382,6 +395,9 @@ const TareasVistaEstudiante = ({ user }) => {
                                 ↺ Ver todas las materias
                             </button>
                         )}
+                        <div style={{marginTop:8}}>
+                            <input type="text" placeholder="🔍 Buscar tarea..." className="global-search-input" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                        </div>
                     </div>
                 </div>
 

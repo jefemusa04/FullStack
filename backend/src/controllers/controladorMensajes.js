@@ -1,6 +1,6 @@
 const asyncHandler = require('express-async-handler');
-const Mensaje = require('../modelos/Mensajes'); // <-- Importación corregida
-const Usuario = require('../modelos/Usuario'); // <-- Importación corregida
+const Mensaje = require('../models/Mensajes'); // <-- Importación corregida
+const Usuario = require('../models/Usuario'); // <-- Importación corregida
 
 // @desc    Obtener todos los mensajes entre el usuario logueado y otro usuario (historial de conversación)
 // @route   GET /api/mensajes/:destinatarioId

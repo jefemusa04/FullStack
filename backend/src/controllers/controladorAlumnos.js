@@ -1,6 +1,6 @@
 const asyncHandler = require('express-async-handler');
-const Usuario = require('../modelos/Usuario');
-const Grupo = require('../modelos/Grupo');
+const Usuario = require('../models/Usuario');
+const Grupo = require('../models/Grupo');
 
 // @desc    Obtener la lista de estudiantes matriculados en un grupo específico
 // @route   GET /api/alumnos/grupo/:grupoId

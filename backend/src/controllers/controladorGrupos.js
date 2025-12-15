@@ -1,6 +1,6 @@
 const asyncHandler = require('express-async-handler');
-const Grupo = require('../modelos/Grupo'); 
-const Usuario = require('../modelos/Usuario'); 
+const Grupo = require('../models/Grupo'); 
+const Usuario = require('../models/Usuario'); 
 
 // @desc    Obtener todos los grupos relevantes para el usuario autenticado
 // @route   GET /api/grupos

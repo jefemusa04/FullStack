@@ -1,7 +1,7 @@
 const asyncHandler = require('express-async-handler');
-const Entrega = require('../modelos/Entrega');
-const Tarea = require('../modelos/Tareas'); // Usamos 'Tarea' singular (asumiendo que se corrigió el modelo)
-const Usuario = require('../modelos/Usuario');
+const Entrega = require('../models/Entrega');
+const Tarea = require('../models/Tareas'); // Usamos 'Tarea' singular (asumiendo que se corrigió el modelo)
+const Usuario = require('../models/Usuario');
 
 // =======================================================
 // LÓGICA DEL ESTUDIANTE (Crear Entrega)

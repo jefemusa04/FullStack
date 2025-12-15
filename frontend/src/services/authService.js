@@ -1,10 +1,10 @@
 import api from "./api";
 
-// Si tu backend usa /api/auth/login y /api/auth/register, adapta aquí.
+// Backend en FullStack-main expone rutas bajo /api/usuarios
 export const loginRequest = (email, password) => {
-  return api.post("/login", { email, password });
+  return api.post('/usuarios/login', { email, password });
 };
 
 export const registerRequest = (payload) => {
-  return api.post("/register", payload);
+  return api.post('/usuarios', payload);
 };
