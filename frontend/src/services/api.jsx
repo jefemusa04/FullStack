@@ -1,7 +1,7 @@
 import axios from 'axios';
+import { getToken, clearAuth } from '../utils/authUtils'; // Importamos las utilidades para ser consistentes
 
-// URL del backend
-const API_URL = import.meta.env.VITE_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -13,7 +13,8 @@ const api = axios.create({
 // Interceptor para agregar el token en cada petición
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    //Usamos la utilidad getToken() en vez de leer localStorage a mano
+    const token = getToken(); 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -27,9 +28,8 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token inválido o expirado
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      clearAuth();
+      // Redirigir al login
       window.location.href = '/login';
     }
     return Promise.reject(error);

@@ -5,13 +5,13 @@ const { registro, login, obtenerUsuarioActual } = require('../controllers/contro
 const { proteger } = require('../middlewares/authMiddleware');
 
 // La ruta raíz '/' en este archivo se traduce a /api/usuarios
-// 1. REGISTRO (POST /api/usuarios)
+// REGISTRO (POST /api/usuarios)
 router.post('/', registro); // Usar 'registro'
 
-// 2. LOGIN (POST /api/usuarios/login)
+// LOGIN (POST /api/usuarios/login)
 router.post('/login', login); // Usar 'login'
 
-// 3. OBTENER DATOS DEL USUARIO (GET /api/usuarios/me)
+// OBTENER DATOS DEL USUARIO (GET /api/usuarios/me)
 // Usar 'obtenerUsuarioActual' y cambiar la ruta a '/actual' o '/me'
 router.get('/me', proteger, obtenerUsuarioActual); // Usar 'obtenerUsuarioActual'
 

@@ -23,5 +23,11 @@ export const matriculateStudent = async (grupoId, emailEstudiante) => {
   return res.data;
 };
 
-const gruposService = { getGrupos, createGrupo, deleteGrupo, matriculateStudent };
+export const agregarAlumnoExistente = async (email, grupoId) => {
+  // Enviamos a '/grupos/agregar-alumno' que acabamos de crear
+  const res = await api.post(`${API_PATH}/agregar-alumno`, { email, grupoId });
+  return res.data;
+};
+
+const gruposService = { getGrupos, createGrupo, deleteGrupo, matriculateStudent, agregarAlumnoExistente };
 export default gruposService;
