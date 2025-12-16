@@ -111,9 +111,67 @@ const eliminarGrupo = asyncHandler(async (req, res) => {
     res.status(200).json({ mensaje: `Grupo ${req.params.id} eliminado` });
 });
 
+// ... (Tus funciones anteriores: obtenerGrupos, crearGrupo, etc.)
+
+// @desc    Agregar un alumno existente a un grupo por correo
+// @route   POST /api/grupos/agregar-alumno
+// @access  Private (Docente)
+const agregarAlumnoExistente = asyncHandler(async (req, res) => {
+    const { email, grupoId } = req.body;
+
+    // 1. Validaciones básicas
+    if (!email || !grupoId) {
+        res.status(400);
+        throw new Error('El email del alumno y el grupo son obligatorios.');
+    }
+
+    // 2. Buscar al Alumno y al Grupo
+    const alumno = await Usuario.findOne({ email });
+    if (!alumno) {
+        res.status(404);
+        throw new Error('No se encontró ningún usuario con ese correo.');
+    }
+
+    const grupo = await Grupo.findById(grupoId);
+    if (!grupo) {
+        res.status(404);
+        throw new Error('Grupo no encontrado.');
+    }
+
+    // 3. Seguridad: Verificar que el docente sea el dueño del grupo
+    if (grupo.docente.toString() !== req.usuario.id) {
+        res.status(401);
+        throw new Error('No tienes permiso para modificar este grupo.');
+    }
+
+    // 4. Evitar duplicados (Si ya está en la clase)
+    if (grupo.estudiantes.includes(alumno._id)) {
+        res.status(400);
+        throw new Error('El alumno ya está inscrito en este grupo.');
+    }
+
+    // 5. ACTUALIZACIÓN BIDIRECCIONAL (La clave para que todo funcione)
+    
+    // A) Meter al alumno en el Grupo
+    grupo.estudiantes.push(alumno._id);
+    await grupo.save();
+
+    // B) Meter el grupo en el Alumno (Importante para que el alumno vea la materia)
+    if (!alumno.grupos.includes(grupo._id)) {
+        alumno.grupos.push(grupo._id);
+        await alumno.save();
+    }
+
+    res.status(200).json({ 
+        mensaje: 'Alumno agregado correctamente',
+        alumno: { id: alumno._id, nombre: alumno.nombre, email: alumno.email }
+    });
+});
+
 module.exports = {
     obtenerGrupos,
     crearGrupo,
     actualizarGrupo,
     eliminarGrupo,
+    agregarAlumnoExistente,
 };

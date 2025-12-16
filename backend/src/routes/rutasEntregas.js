@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { crearEntrega, obtenerEntregasPorTarea, calificarEntrega } = require('../controladores/controladorEntregas');
-const { proteger } = require('../middleware/authMiddleware');
+const { crearEntrega, obtenerEntregasPorTarea, calificarEntrega } = require('../controllers/controladorEntregas');
+const { proteger } = require('../middlewares/authMiddleware');
 
 // RUTAS DEL ESTUDIANTE (Crear/Actualizar Entrega)
 // POST /api/entregas

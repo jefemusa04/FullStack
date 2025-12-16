@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { obtenerTareas, crearTarea, actualizarTarea, eliminarTarea } = require('../controladores/controladorTareas');
-const { proteger } = require('../middleware/authMiddleware');
+const { obtenerTareas, crearTarea, actualizarTarea, eliminarTarea } = require('../controllers/controladorTareas');
+const { proteger } = require('../middlewares/authMiddleware');
 
 // Rutas base: GET (obtener todas) y POST (crear nueva)
 router.route('/')

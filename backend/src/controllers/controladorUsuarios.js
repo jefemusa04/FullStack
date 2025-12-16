@@ -15,6 +15,7 @@ const generarTokenJWT = (id) => {
 // @route   POST /api/usuarios
 // @access  Public
 const registro = asyncHandler(async (req, res) => {
+    try{
     // 1. Obtener datos y validar
     const { nombre, email, password, rol } = req.body;
 
@@ -58,12 +59,17 @@ const registro = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error('Datos de usuario inválidos');
     }
+    } catch (error) {
+        console.log("EL ERROR ES ESTE:", error); 
+        throw new Error(error);
+    }
 });
 
 // @desc    Autenticar un usuario (Login)
 // @route   POST /api/usuarios/login
 // @access  Public
 const login = asyncHandler(async (req, res) => {
+    try{
     const { email, password } = req.body;
 
     // 1. Buscar el usuario por email
@@ -83,6 +89,10 @@ const login = asyncHandler(async (req, res) => {
         // Fallo: Datos inválidos
         res.status(400);
         throw new Error('Credenciales inválidas (email o contraseña incorrectos)');
+    }
+    } catch (error) {
+        console.log("EL ERROR ES ESTE:", error); // <--- Esto nos dirá la verdad
+        throw new Error(error);
     }
 });
 
