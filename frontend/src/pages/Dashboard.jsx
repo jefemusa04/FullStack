@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getGrupos, createGrupo } from '../services/gruposService'; 
-import { toast } from 'react-toastify'; 
+import { getGrupos, createGrupo } from '../services/gruposService';
+import { toast } from 'react-toastify';
 
 const Dashboard = () => {
     const { user } = useAuth();
     const isDocente = user?.rol === 'docente';
 
     // Estado para manejar la navegación interna
-    const [view, setView] = useState('dashboard'); 
+    const [view, setView] = useState('dashboard');
 
     // --- ESTADO DE DATOS (AHORA REALES) ---
     const [grupos, setGrupos] = useState([]); // Inicia vacío
@@ -51,14 +51,14 @@ const Dashboard = () => {
 
     const handleCreateGroup = async (e) => {
         e.preventDefault();
-        
+
         try {
             // 1. Llamada a la API Real
             const grupoCreado = await createGrupo(newGroup);
-            
+
             // 2. Actualizar la lista en pantalla sin recargar
             setGrupos([...grupos, grupoCreado]);
-            
+
             // 3. Notificación de Éxito
             toast.success(
                 <div>
@@ -71,8 +71,8 @@ const Dashboard = () => {
             );
 
             // 4. Limpiar y salir
-            setNewGroup({ nombre: '', clave: '', descripcion: '' }); 
-            setView('dashboard'); 
+            setNewGroup({ nombre: '', clave: '', descripcion: '' });
+            setView('dashboard');
 
         } catch (error) {
             const msg = error.response?.data?.message || "Error al crear el grupo";
@@ -102,22 +102,22 @@ const Dashboard = () => {
                         <div className="form-grid-global">
                             <div>
                                 <label className="label-global">Nombre del Grupo (Ej: Matemáticas V)</label>
-                                <input 
-                                    type="text" 
-                                    className="input-global" 
+                                <input
+                                    type="text"
+                                    className="input-global"
                                     value={newGroup.nombre}
-                                    onChange={(e) => setNewGroup({...newGroup, nombre: e.target.value})}
+                                    onChange={(e) => setNewGroup({ ...newGroup, nombre: e.target.value })}
                                     placeholder="Nombre de la materia"
                                     required
                                 />
                             </div>
                             <div>
                                 <label className="label-global">Clave Única (Ej: MAT501-A)</label>
-                                <input 
-                                    type="text" 
-                                    className="input-global" 
+                                <input
+                                    type="text"
+                                    className="input-global"
                                     value={newGroup.clave}
-                                    onChange={(e) => setNewGroup({...newGroup, clave: e.target.value})}
+                                    onChange={(e) => setNewGroup({ ...newGroup, clave: e.target.value })}
                                     placeholder="Código identificador"
                                     required
                                 />
@@ -126,11 +126,11 @@ const Dashboard = () => {
 
                         <div>
                             <label className="label-global">Descripción (Opcional)</label>
-                            <textarea 
-                                className="input-global" 
-                                rows="4" 
+                            <textarea
+                                className="input-global"
+                                rows="4"
                                 value={newGroup.descripcion}
-                                onChange={(e) => setNewGroup({...newGroup, descripcion: e.target.value})}
+                                onChange={(e) => setNewGroup({ ...newGroup, descripcion: e.target.value })}
                                 placeholder="Breve descripción del curso..."
                             ></textarea>
                         </div>
@@ -162,7 +162,7 @@ const Dashboard = () => {
                         {isDocente ? 'Panel de control docente' : 'Panel de control estudiantil'}
                     </p>
                 </div>
-                
+
                 {isDocente && (
                     <button onClick={() => setView('create-group')} className="btn btn-create">
                         ➕ Agregar Materia
@@ -214,15 +214,15 @@ const Dashboard = () => {
                 ) : (
                     <div className="courses-grid">
                         {grupos.map((grupo, index) => (
-                            <Link 
+                            <Link
                                 to={`/tareas?grupo=${encodeURIComponent(grupo.nombre)}`}
                                 // OJO: MongoDB usa _id, no id
-                                key={grupo._id} 
-                                className="course-card" 
+                                key={grupo._id}
+                                className="course-card"
                                 style={{ textDecoration: 'none' }}
                             >
-                                <div 
-                                    className="course-image-pattern" 
+                                <div
+                                    className="course-image-pattern"
                                     style={{ background: handleCardColor(index) }}
                                 >
                                     <div className="course-overlay"></div>
@@ -241,20 +241,20 @@ const Dashboard = () => {
                                             <span className="course-meta-icon">{isDocente ? '👨‍🎓' : '📚'}</span>
                                             <span className="course-meta-text">
                                                 {/* Validamos si existe el array de alumnos */}
-                                                {isDocente 
-                                                    ? `${grupo.estudiantes?.length || 0} Alumnos` 
-                                                    : 'Profesor Titular'}
+                                                {isDocente
+                                                    ? `${grupo.estudiantes?.length || 0} Alumnos`
+                                                    : (grupo.docente?.nombre || 'Profesor Titular')}
                                             </span>
                                         </div>
                                         {(grupo.tareasPendientes || 0) > 0 ? (
                                             <div className="course-alert">
                                                 <span className="alert-icon">⚠️</span>
-                                                <span className="alert-text">{grupo.tareasPendientes} tareas pendientes</span>
+                                                <span className="alert-text">{grupo.tareasPendientes} {isDocente ? 'por calificar' : 'pendientes'}</span>
                                             </div>
                                         ) : (
                                             <div className="course-success">
                                                 <span className="success-icon">✅</span>
-                                                <span className="success-text">Al día</span>
+                                                <span className="success-text">{isDocente ? 'Todo calificado' : 'Al día'}</span>
                                             </div>
                                         )}
                                     </div>

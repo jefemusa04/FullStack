@@ -1,25 +1,74 @@
 const asyncHandler = require('express-async-handler');
-const Grupo = require('../models/Grupo'); 
-const Usuario = require('../models/Usuario'); 
+const Grupo = require('../models/Grupo');
+const Usuario = require('../models/Usuario');
+const Tarea = require('../models/Tareas');
+const Entrega = require('../models/Entrega');
 
 // @desc    Obtener todos los grupos relevantes para el usuario autenticado
 // @route   GET /api/grupos
 // @access  Private
 const obtenerGrupos = asyncHandler(async (req, res) => {
     let grupos;
-    
+
+    // Si es docente, ve los grupos que creó
     // Si es docente, ve los grupos que creó
     if (req.usuario.rol === 'docente') {
-        grupos = await Grupo.find({ docente: req.usuario.id });
-    } 
+        const gruposDocente = await Grupo.find({ docente: req.usuario.id }).lean();
+
+        // Calcular tareas pendientes de calificar para cada grupo
+        grupos = await Promise.all(gruposDocente.map(async (grupo) => {
+            // 1. Obtener IDs de Tareas del grupo
+            const tareasGrupo = await Tarea.find({ grupo: grupo._id }).select('_id');
+            const tareasIds = tareasGrupo.map(t => t._id);
+
+            // 2. Contar Entregas SIN calificar (donde calificacion es null)
+            const entregasPorCalificar = await Entrega.countDocuments({
+                tarea: { $in: tareasIds },
+                calificacion: null,
+                estado: { $ne: 'Pendiente' } // Solo las que ya se entregaron (Entregado, Tarde)
+            });
+
+            return {
+                ...grupo,
+                tareasPendientes: entregasPorCalificar // Reutilizamos el campo "tareasPendientes"
+            };
+        }));
+    }
     // Si es estudiante, ve los grupos a los que pertenece
     else if (req.usuario.rol === 'estudiante') {
         // Obtenemos el usuario completo (que ya debería contener el array de grupos en la propiedad 'grupos')
-        const estudiante = await Usuario.findById(req.usuario.id).select('grupos'); 
+        const estudiante = await Usuario.findById(req.usuario.id).select('grupos');
 
         if (estudiante && estudiante.grupos.length > 0) {
             // Buscar los grupos por los IDs en el array del estudiante
-            grupos = await Grupo.find({ _id: { $in: estudiante.grupos } });
+            // .populate('docente', 'nombre') trae el nombre del docente
+            const gruposRaw = await Grupo.find({ _id: { $in: estudiante.grupos } })
+                .populate('docente', 'nombre email')
+                .lean(); // Usamos lean para poder manipular el objeto JSON fácilmente
+
+            // Calcular tareas pendientes para cada grupo
+            grupos = await Promise.all(gruposRaw.map(async (grupo) => {
+                // 1. Obtener todas las tareas de este grupo
+                const tareasGrupo = await Tarea.find({ grupo: grupo._id }).select('_id');
+                const tareasIds = tareasGrupo.map(t => t._id);
+
+                // 2. Contar cuántas entregas ha hecho el estudiante para esas tareas
+                // (Suponemos que si existe entrega, ya no está "pendiente" o al menos ya se subió algo)
+                const entregasEstudiante = await Entrega.countDocuments({
+                    tarea: { $in: tareasIds },
+                    estudiante: req.usuario.id
+                });
+
+                // 3. Pendientes = Total Tareas - Tareas Entregadas
+                const totalTareas = tareasIds.length;
+                const pendientes = totalTareas - entregasEstudiante;
+
+                return {
+                    ...grupo,
+                    tareasPendientes: pendientes > 0 ? pendientes : 0
+                };
+            }));
+
         } else {
             grupos = []; // Lista vacía si no está en ningún grupo
         }
@@ -40,7 +89,7 @@ const crearGrupo = asyncHandler(async (req, res) => {
         res.status(403);
         throw new Error('Acceso denegado. Solo docentes pueden crear grupos.');
     }
-    
+
     // 1. Validar que se envíen los campos obligatorios
     const { nombre, clave, descripcion } = req.body;
 
@@ -107,7 +156,7 @@ const eliminarGrupo = asyncHandler(async (req, res) => {
         throw new Error('Usuario no autorizado para eliminar este grupo');
     }
 
-    await Grupo.deleteOne({ _id: req.params.id }); 
+    await Grupo.deleteOne({ _id: req.params.id });
     res.status(200).json({ mensaje: `Grupo ${req.params.id} eliminado` });
 });
 
@@ -151,7 +200,7 @@ const agregarAlumnoExistente = asyncHandler(async (req, res) => {
     }
 
     // 5. ACTUALIZACIÓN BIDIRECCIONAL (La clave para que todo funcione)
-    
+
     // A) Meter al alumno en el Grupo
     grupo.estudiantes.push(alumno._id);
     await grupo.save();
@@ -162,7 +211,7 @@ const agregarAlumnoExistente = asyncHandler(async (req, res) => {
         await alumno.save();
     }
 
-    res.status(200).json({ 
+    res.status(200).json({
         mensaje: 'Alumno agregado correctamente',
         alumno: { id: alumno._id, nombre: alumno.nombre, email: alumno.email }
     });
