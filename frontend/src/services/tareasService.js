@@ -12,6 +12,11 @@ export const createTarea = async (tareaData) => {
   return res.data;
 };
 
+export const updateTarea = async (id, tareaData) => {
+  const res = await api.put(`${API_PATH}/${id}`, tareaData);
+  return res.data;
+};
+
 export const deleteTarea = async (id) => {
   const res = await api.delete(`${API_PATH}/${id}`);
   return res.data;

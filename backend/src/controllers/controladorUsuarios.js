@@ -105,9 +105,42 @@ const obtenerUsuarioActual = asyncHandler(async (req, res) => {
     res.status(200).json(req.usuario); 
 });
 
+// @desc    Actualizar perfil de usuario
+// @route   PUT /api/usuarios/perfil
+// @access  Private
+const actualizarPerfil = asyncHandler(async (req, res) => {
+    // req.usuario viene del middleware de autenticación (el token)
+    const usuario = await Usuario.findById(req.usuario.id);
+
+    if (usuario) {
+        // Actualizamos solo el nombre (el email no se suele dejar cambiar tan fácil)
+        usuario.nombre = req.body.nombre || usuario.nombre;
+        
+        // Si quisieras actualizar password aquí, iría esto:
+        // if (req.body.password) {
+        //     const salt = await bcrypt.genSalt(10);
+        //     usuario.password = await bcrypt.hash(req.body.password, salt);
+        // }
+
+        const usuarioActualizado = await usuario.save();
+
+        // Devolvemos los datos nuevos + el token (para que el front se actualice)
+        res.json({
+            _id: usuarioActualizado._id,
+            nombre: usuarioActualizado.nombre,
+            email: usuarioActualizado.email,
+            rol: usuarioActualizado.rol,
+            token: generarTokenJWT(usuarioActualizado._id),
+        });
+    } else {
+        res.status(404);
+        throw new Error('Usuario no encontrado');
+    }
+});
 
 module.exports = {
     registro,
     login,
     obtenerUsuarioActual,
+    actualizarPerfil
 };

@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useContext } from "react";
 import { loginRequest, registerRequest } from "../services/authService";
 import { saveAuth, clearAuth, getUser } from "../utils/authUtils";
 import { toast } from 'react-toastify';
+import axios from 'axios';
 
 export const AuthContext = createContext();
 
@@ -68,17 +69,31 @@ export const AuthProvider = ({ children }) => {
     };
 
     // Actualizar perfil
-    const updateProfile = async ({ nombre, password }) => {
+    const updateProfile = async ({ nombre }) => {
         try {
-            const updated = { ...user, nombre: nombre || user.nombre };
-            localStorage.setItem('user', JSON.stringify(updated));
-            setUser(updated);
+            // Configuramos el header con el Token
+            const config = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${user.token}`, // Necesitamos el token actual
+                },
+            };
 
+            // ENVIAMOS LA PETICIÓN AL BACKEND (Esto es lo que faltaba)
+            const { data } = await axios.put(VITE_API_URL, { nombre }, config);
+
+            // Si el backend responde bien, actualizamos el estado local con LO QUE RESPONDIÓ EL SERVIDOR
+            localStorage.setItem('user', JSON.stringify(data));
+            setUser(data);
+
+            // Eventos y notificaciones
             window.dispatchEvent(new Event('authChanged'));
-            toast.success('Perfil actualizado');
+            toast.success('Perfil actualizado correctamente');
             return { ok: true };
+
         } catch (err) {
-            const msg = 'Error al actualizar perfil';
+            console.error(err);
+            const msg = err.response?.data?.message || 'Error al actualizar perfil';
             toast.error(msg);
             return { ok: false, message: msg };
         }

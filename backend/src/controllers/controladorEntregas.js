@@ -132,9 +132,30 @@ const calificarEntrega = asyncHandler(async (req, res) => {
     res.status(200).json(entrega);
 });
 
+// @desc    Obtener todas las entregas del estudiante logueado
+// @route   GET /api/entregas/mis-entregas
+// @access  Private (Estudiante)
+const obtenerMisEntregas = asyncHandler(async (req, res) => {
+    if (req.usuario.rol !== 'estudiante') {
+        res.status(403);
+        throw new Error('Solo estudiantes pueden ver sus propias entregas.');
+    }
+
+    // Buscamos todas las entregas donde el estudiante sea el usuario actual
+    // Y populamos la 'tarea' para saber de qué materia es
+    const entregas = await Entrega.find({ estudiante: req.usuario.id })
+        .populate({
+            path: 'tarea',
+            select: 'titulo grupo puntuacionMaxima', // Traemos titulo y grupo
+            populate: { path: 'grupo', select: 'nombre' } // Y el nombre del grupo dentro de la tarea
+        });
+
+    res.status(200).json(entregas);
+});
 
 module.exports = {
     crearEntrega,
     obtenerEntregasPorTarea,
     calificarEntrega,
+    obtenerMisEntregas
 };
