@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const User = require('../models/User');
+const User = require('../models/Usuario');
 const nodemailer = require('nodemailer');
 
 // 1. Solicitar recuperación (Genera el token y envía el correo)
