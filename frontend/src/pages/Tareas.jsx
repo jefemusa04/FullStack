@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSearchParams } from 'react-router-dom';
-
 // IMPORTACIÓN DE SERVICIOS
 import { getTareas, createTarea, updateTarea, deleteTarea } from '../services/tareasService';
-import { getGrupos } from '../services/gruposService'; // <--- Nuevo: Importamos servicio de grupos
+import { getGrupos } from '../services/gruposService'; 
+import { getEntregasByTarea, calificarEntrega } from '../services/entregasService';
 
 // ==========================================
 // VISTA DOCENTE
@@ -28,22 +28,24 @@ const TareasVistaDocente = () => {
     };
     const [formData, setFormData] = useState(initialFormState);
 
-    // ESTADO DE DATOS REALES
+    // ESTADO DE DATOS REALES (Tareas y Grupos)
     const [tareas, setTareas] = useState([]);
-    const [listaGrupos, setListaGrupos] = useState([]); // <--- Nuevo: Almacena grupos para el Select
+    const [listaGrupos, setListaGrupos] = useState([]); 
 
-    // --- CARGAR DATOS (Tareas y Grupos) ---
+    // --- ESTADO DE ENTREGAS (DATOS REALES) ---
+    const [entregas, setEntregas] = useState([]); 
+    const [loadingEntregas, setLoadingEntregas] = useState(false);
+
+    // --- CARGAR DATOS INICIALES ---
     const fetchData = async () => {
         setLoading(true);
         try {
-            // Hacemos ambas peticiones en paralelo para ser más rápidos
             const [tareasData, gruposData] = await Promise.all([
                 getTareas(),
                 getGrupos()
             ]);
-            
             setTareas(tareasData);
-            setListaGrupos(gruposData); // Guardamos los grupos reales
+            setListaGrupos(gruposData);
         } catch (error) {
             console.error("Error al cargar datos:", error);
             alert("Error de conexión. Revisa la consola.");
@@ -52,21 +54,13 @@ const TareasVistaDocente = () => {
         }
     };
 
-    // Cargar al iniciar el componente
     useEffect(() => {
         fetchData();
     }, []);
 
-    // --- DATOS MOCK DE ENTREGAS ---
-    const [entregasMock] = useState([
-        { _id: 'e1', alumno: 'Juan Pérez', fecha: '2025-12-18', estado: 'Entregado', archivo: 'ensayo.pdf', calificacion: null },
-        { _id: 'e2', alumno: 'Maria Gomez', fecha: '-', estado: 'Pendiente', archivo: null, calificacion: null },
-    ]);
-
     // Filtrado local
     const tareasMostradas = grupoFiltro ? tareas.filter(t => {
         const nombreGrupo = t.grupo?.nombre || t.grupo; 
-        // Si el filtro es por ID (poco probable en URL amigable) o Nombre
         return nombreGrupo === grupoFiltro || t.grupo?._id === grupoFiltro;
     }) : tareas;
 
@@ -154,7 +148,7 @@ const TareasVistaDocente = () => {
                 await createTarea(formData);
                 alert("Tarea creada exitosamente.");
             }
-            fetchData(); // Recargar todo
+            fetchData();
             setView('list');
         } catch (error) {
             console.error("Error guardando:", error);
@@ -174,7 +168,50 @@ const TareasVistaDocente = () => {
         } 
     };
 
-    const handleViewSubmissions = (tarea) => { setCurrentTask(tarea); setView('entregas'); };
+    // Manejador para cargar entregas desde el Backend
+    const handleViewSubmissions = async (tarea) => { 
+        setCurrentTask(tarea); 
+        setView('entregas');
+        
+        setLoadingEntregas(true);
+        try {
+            const data = await getEntregasByTarea(tarea._id); // Llamada al API
+            setEntregas(data);
+        } catch (error) {
+            console.error("Error cargando entregas:", error);
+            alert("No se pudieron cargar las entregas.");
+        } finally {
+            setLoadingEntregas(false);
+        }
+    };
+
+    // Manejador para calificar alumno
+    const handleCalificar = async (entregaId, notaActual) => {
+        const nuevaNota = window.prompt("Ingresa la calificación (0-100):", notaActual || "");
+        
+        if (nuevaNota !== null && nuevaNota.trim() !== "") {
+            const calificacionNum = Number(nuevaNota);
+            if (isNaN(calificacionNum) || calificacionNum < 0 || calificacionNum > 100) {
+                return alert("Por favor ingresa un número válido entre 0 y 100");
+            }
+
+            try {
+                await calificarEntrega(entregaId, { 
+                    calificacion: calificacionNum, 
+                    comentariosDocente: "Calificado desde panel docente" 
+                });
+                
+                // Actualizamos visualmente la tabla
+                setEntregas(prev => prev.map(e => 
+                    e._id === entregaId ? { ...e, calificacion: calificacionNum, estado: 'Calificado' } : e
+                ));
+                alert("Calificación guardada exitosamente.");
+            } catch (error) {
+                console.error(error);
+                alert("Error al guardar la calificación.");
+            }
+        }
+    };
 
     // Estilos Inline
     const tabStyle = { position: 'absolute', left: -18, top: 120, zIndex: 60, cursor: 'pointer' };
@@ -201,8 +238,6 @@ const TareasVistaDocente = () => {
                                 <label className="label-global">Título</label>
                                 <input type="text" className="input-global" value={formData.titulo} onChange={e => setFormData({...formData, titulo: e.target.value})} required placeholder="Ej: Examen Parcial" />
                             </div>
-                            
-                            {/* --- SELECTOR DE GRUPOS DINÁMICO --- */}
                             <div>
                                 <label className="label-global">Grupo</label>
                                 <select 
@@ -223,8 +258,6 @@ const TareasVistaDocente = () => {
                                     )}
                                 </select>
                             </div>
-                            {/* ---------------------------------- */}
-                            
                         </div>
                         <div className="form-grid-global">
                             <div>
@@ -250,7 +283,7 @@ const TareasVistaDocente = () => {
         );
     }
 
-    // VISTA ENTREGAS (Mantiene Mock)
+    //VISTA ENTREGAS (CONECTADA AL BACKEND)
     if (view === 'entregas') {
         return (
             <div className="page-container">
@@ -261,27 +294,106 @@ const TareasVistaDocente = () => {
                     </div>
                     <button onClick={() => setView('list')} className="btn btn-back">← Volver a Tareas</button>
                 </div>
+
                 <div className="stats-row">
-                    <div className="stat-card-global highlight"><div className="stat-icon-global">📊</div><div className="stat-info-global"><div className="stat-value-global">{entregasMock.length}</div><div className="stat-label-global">Total Alumnos</div></div></div>
-                    <div className="stat-card-global"><div className="stat-icon-global">✅</div><div className="stat-info-global"><div className="stat-value-global">{entregasMock.filter(e => e.estado === 'Entregado').length}</div><div className="stat-label-global">Entregados</div></div></div>
+                    <div className="stat-card-global highlight">
+                        <div className="stat-icon-global">📊</div>
+                        <div className="stat-info-global">
+                            <div className="stat-value-global">{entregas.length}</div>
+                            <div className="stat-label-global">Envíos Recibidos</div>
+                        </div>
+                    </div>
+                    <div className="stat-card-global">
+                        <div className="stat-icon-global">✅</div>
+                        <div className="stat-info-global">
+                            <div className="stat-value-global">
+                                {entregas.filter(e => e.calificacion !== null).length}
+                            </div>
+                            <div className="stat-label-global">Calificados</div>
+                        </div>
+                    </div>
                 </div>
+
                 <div className="data-container-global">
                     <div className="data-header-global"><h2 className="data-title-global">Detalle de Envíos</h2></div>
                     <div className="overflow-x-auto">
-                        <table className="table-global">
-                            <thead><tr><th>Alumno</th><th>Estado</th><th>Fecha</th><th>Archivo</th><th>Acción</th></tr></thead>
-                            <tbody>
-                                {entregasMock.map(entrega => (
-                                    <tr key={entrega._id}>
-                                        <td><span className="font-semibold text-gray-800">{entrega.alumno}</span></td>
-                                        <td><span className={`badge-pill ${entrega.estado === 'Entregado' ? 'success' : 'warning'}`}>{entrega.estado}</span></td>
-                                        <td className="text-gray-600">{entrega.fecha}</td>
-                                        <td>{entrega.archivo ? (<span className="text-blue-600 flex items-center gap-1 cursor-pointer hover:underline">📄 {entrega.archivo}</span>) : <span className="text-gray-400">-</span>}</td>
-                                        <td><div className="actions-row-global"><button className="action-btn-global" title="Calificar">📝</button></div></td>
+                        {loadingEntregas ? (
+                            <p style={{padding: 20, textAlign: 'center'}}>Cargando entregas...</p>
+                        ) : entregas.length === 0 ? (
+                            <p style={{padding: 30, textAlign: 'center', color: '#888'}}>
+                                No hay entregas para esta tarea aún.
+                            </p>
+                        ) : (
+                            <table className="table-global">
+                                <thead>
+                                    <tr>
+                                        <th>Alumno</th>
+                                        <th>Estado</th>
+                                        <th>Fecha Entrega</th>
+                                        <th>Archivo</th>
+                                        <th>Calificación</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {entregas.map(entrega => (
+                                        <tr key={entrega._id}>
+                                            <td>
+                                                <div className="font-semibold text-gray-800">
+                                                    {entrega.estudiante?.nombre || "Desconocido"}
+                                                </div>
+                                                <div style={{fontSize: '0.8rem', color: '#666'}}>
+                                                    {entrega.estudiante?.email}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span className={`badge-pill ${
+                                                    entrega.estado === 'Calificado' ? 'success' : 
+                                                    entrega.estado === 'Tarde' ? 'warning' : 'info'
+                                                }`}>
+                                                    {entrega.estado}
+                                                </span>
+                                            </td>
+                                            <td className="text-gray-600">
+                                                {new Date(entrega.fechaEntrega).toLocaleDateString()}
+                                                <span style={{fontSize:'0.75em', display:'block'}}>
+                                                    {new Date(entrega.fechaEntrega).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {entrega.archivoUrl ? (
+                                                    <a 
+                                                        href={entrega.archivoUrl} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="text-blue-600 flex items-center gap-1 cursor-pointer hover:underline"
+                                                    >
+                                                        📄 Ver Trabajo
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-gray-400">Sin archivo</span>
+                                                )}
+                                            </td>
+                                            <td>
+                                                <div className="actions-row-global">
+                                                    <div style={{display:'flex', alignItems:'center', gap: 10}}>
+                                                        <span style={{fontWeight: 'bold', fontSize: '1.1rem'}}>
+                                                            {entrega.calificacion !== null ? entrega.calificacion : '-'}
+                                                        </span>
+                                                        <button 
+                                                            className="action-btn-global" 
+                                                            title="Calificar"
+                                                            onClick={() => handleCalificar(entrega._id, entrega.calificacion)}
+                                                        >
+                                                            📝
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
                 </div>
             </div>
@@ -360,32 +472,32 @@ const TareasVistaDocente = () => {
                              grouped.length > 0 ? (
                                 grouped.map(([label, items]) => (
                                     <div key={label} ref={el => (weekRefs.current[label] = el)} style={{marginBottom:16, padding:'12px 12px', borderBottom: selectedWeek===label ? '2px solid #e6eef8' : '1px solid #eee', background: selectedWeek===label ? '#fbfdff' : 'transparent', borderRadius:6}}>
-                                        <h3 style={{marginBottom:8, display:'flex', justifyContent:'space-between', alignItems:'center', color: 'var(--color-primary)', fontWeight: 'bold'}}>
-                                            <span>{label}</span>
-                                            <span style={{fontSize:'0.85rem', color:'#666', fontWeight:'normal'}}>{items.length} actividades</span>
-                                        </h3>
-                                        <ul style={{listStyle:'none', padding:0}}>
-                                            {items.map(t => (
-                                                <li key={t._id} style={{padding:16, borderBottom:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#fff', gap: '1rem', flexWrap: 'wrap'}}>
-                                                    <div style={{flex: 1}}>
-                                                        <div style={{fontWeight:700, color:'#1e293b', fontSize: '1.05rem'}}>{t.titulo}</div>
-                                                        <div style={{fontSize:'0.9rem', color:'#334155', marginTop:6}} className="task-description">{t.descripcion}</div>
-                                                        <div style={{fontSize:'0.85rem', color:'#64748b', marginTop: 8}}>
-                                                            {t.grupo?.nombre || t.grupo} • Puntos: {t.puntuacionMaxima}
+                                            <h3 style={{marginBottom:8, display:'flex', justifyContent:'space-between', alignItems:'center', color: 'var(--color-primary)', fontWeight: 'bold'}}>
+                                                <span>{label}</span>
+                                                <span style={{fontSize:'0.85rem', color:'#666', fontWeight:'normal'}}>{items.length} actividades</span>
+                                            </h3>
+                                            <ul style={{listStyle:'none', padding:0}}>
+                                                {items.map(t => (
+                                                    <li key={t._id} style={{padding:16, borderBottom:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#fff', gap: '1rem', flexWrap: 'wrap'}}>
+                                                        <div style={{flex: 1}}>
+                                                            <div style={{fontWeight:700, color:'#1e293b', fontSize: '1.05rem'}}>{t.titulo}</div>
+                                                            <div style={{fontSize:'0.9rem', color:'#334155', marginTop:6}} className="task-description">{t.descripcion}</div>
+                                                            <div style={{fontSize:'0.85rem', color:'#64748b', marginTop: 8}}>
+                                                                {t.grupo?.nombre || t.grupo} • Puntos: {t.puntuacionMaxima}
+                                                            </div>
+                                                            <div style={{fontSize:'0.85rem', color:'#64748b', marginTop: 4}}>
+                                                                Entrega: {t.fechaEntrega ? new Date(t.fechaEntrega).toLocaleDateString() : 'Sin fecha'}
+                                                            </div>
                                                         </div>
-                                                        <div style={{fontSize:'0.85rem', color:'#64748b', marginTop: 4}}>
-                                                            Entrega: {t.fechaEntrega ? new Date(t.fechaEntrega).toLocaleDateString() : 'Sin fecha'}
+                                                        
+                                                        <div className="actions-row-global">
+                                                            <button onClick={() => handleViewSubmissions(t)} className="action-btn-global" title="Ver Entregas">👁️</button>
+                                                            <button onClick={() => handleOpenEdit(t)} className="action-btn-global" title="Editar">✏️</button>
+                                                            <button onClick={() => handleDelete(t._id)} className="action-btn-global delete" title="Eliminar">🗑️</button>
                                                         </div>
-                                                    </div>
-                                                    
-                                                    <div className="actions-row-global">
-                                                        <button onClick={() => handleViewSubmissions(t)} className="action-btn-global" title="Ver Entregas">👁️</button>
-                                                        <button onClick={() => handleOpenEdit(t)} className="action-btn-global" title="Editar">✏️</button>
-                                                        <button onClick={() => handleDelete(t._id)} className="action-btn-global delete" title="Eliminar">🗑️</button>
-                                                    </div>
-                                                </li>
-                                            ))}
-                                        </ul>
+                                                    </li>
+                                                ))}
+                                            </ul>
                                     </div>
                                 ))
                             ) : (

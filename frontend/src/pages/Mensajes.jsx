@@ -95,7 +95,8 @@ const Mensajes = () => {
             const msgVisual = { 
                 ...msgEnviado, 
                 // Aseguramos que remitente sea un objeto con _id para que coincida con la lógica
-                remitente: { _id: user.id, nombre: user.nombre } 
+                remitente: { _id: user.id||user._id,
+                     nombre: user.nombre } 
             };
             
             setMessages(prev => [...prev, msgVisual]);

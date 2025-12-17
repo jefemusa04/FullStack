@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getTareas } from '../services/tareasService';
-// Asegúrate de exportar getMisEntregas en tu service si hiciste el cambio del backend
-// Si no, avísame y ajustamos.
 import { getEntregasByTarea, calificarEntrega, getMisEntregas } from '../services/entregasService'; 
+// Importamos jsPDF y autoTable para generación de reportes PDF
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const Calificaciones = () => {
     const { user } = useAuth();
@@ -147,12 +148,65 @@ const Calificaciones = () => {
         }
     };
 
-    const handleDelete = (id) => {
-        // Eliminar una calificación es delicado. Normalmente solo se resetea a 0 o null.
-        // Por ahora lo dejaré solo como alerta visual.
-        alert("La eliminación de entregas debe hacerse desde el panel de Tareas.");
-    };
+   // ==========================================
+    // GENERADOR DE PDF (ACTUALIZADO CON MATERIA)
+    // ==========================================
+    const generarPDF = () => {
+        const doc = new jsPDF();
 
+        // 1. Título Principal
+        doc.setFontSize(18);
+        doc.setTextColor(40); // Gris oscuro
+        doc.text("Reporte de Calificaciones", 14, 22);
+        
+        // 2. Subtítulo con la MATERIA (Lo que pediste)
+        doc.setFontSize(14);
+        doc.setTextColor(0, 102, 204); // Azul para resaltar
+        const materiaTexto = groupFilter ? `Materia: ${groupFilter}` : "Materia: Reporte General (Todas)";
+        doc.text(materiaTexto, 14, 32);
+
+        // 3. Datos del Docente y Fecha
+        doc.setFontSize(10);
+        doc.setTextColor(100); // Gris claro
+        const fecha = new Date().toLocaleDateString();
+        doc.text(`Docente: ${user.nombre}`, 14, 42);
+        doc.text(`Generado el: ${fecha}`, 14, 48);
+
+        // 4. Definir las columnas
+        const columnas = ["Estudiante", "Correo", "Tarea", "Grupo", "Calif.", "Máx", "Estado"];
+
+        // 5. Preparar las filas
+        const filas = filteredCalificaciones.map(item => [
+            item.estudiante,
+            item.email || '-',
+            item.tarea,
+            item.grupo,
+            item.calificacion,
+            item.maxPuntos,
+            item.estado
+        ]);
+
+        // 6. Generar la tabla
+        autoTable(doc, {
+            startY: 55, // Bajamos un poco la tabla para que quepa el encabezado nuevo
+            head: [columnas],
+            body: filas,
+            theme: 'grid',
+            styles: { fontSize: 9, cellPadding: 2 },
+            headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+            // Colorear filas según estado (opcional, detalle visual extra)
+            didParseCell: (data) => {
+                if (data.section === 'body' && data.column.index === 6) {
+                    if (data.cell.raw === 'Pendiente') data.cell.styles.textColor = [200, 100, 0]; // Naranja
+                    if (data.cell.raw === 'Calificado') data.cell.styles.textColor = [0, 128, 0]; // Verde
+                }
+            }
+        });
+
+        // 7. Descargar
+        const nombreArchivo = groupFilter ? `Reporte_${groupFilter.replace(/\s/g, '_')}.pdf` : `Reporte_General.pdf`;
+        doc.save(nombreArchivo);
+    };
     // ==========================================
     // VISTA DOCENTE
     // ==========================================
@@ -164,8 +218,7 @@ const Calificaciones = () => {
                         <h1 className="calificaciones-title">📊 Gestión de Calificaciones</h1>
                         <p className="calificaciones-subtitle">Administra y revisa las calificaciones de tus estudiantes</p>
                     </div>
-                    {/* Botón decorativo por ahora */}
-                    <button className="btn btn-create" onClick={() => window.print()}>
+                    <button className="btn btn-create" onClick={generarPDF}>
                         📄 Imprimir Reporte
                     </button>
                 </div>
