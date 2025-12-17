@@ -26,6 +26,10 @@ const TareaSchema = new mongoose.Schema({
     fechaEntrega: {
         type: Date,
         required: [true, 'La fecha de entrega es obligatoria.']
+    },
+    archivoUrl: {
+        type: String,
+        default: null
     }
 }, {
     timestamps: true

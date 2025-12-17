@@ -7,6 +7,7 @@ export const getTareas = async () => {
   return res.data;
 };
 
+// Si le pasas un 'new FormData()', manda un archivo
 export const createTarea = async (tareaData) => {
   const res = await api.post(API_PATH, tareaData);
   return res.data;

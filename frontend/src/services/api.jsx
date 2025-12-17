@@ -7,9 +7,6 @@ const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const api = axios.create({
   baseURL: API_URL, // Usará '/api' ya sea desde el .env o como fallback.
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
 // Interceptor para agregar el token en cada petición

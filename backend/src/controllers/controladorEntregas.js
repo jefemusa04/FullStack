@@ -1,10 +1,10 @@
 const asyncHandler = require('express-async-handler');
 const Entrega = require('../models/Entrega');
-const Tarea = require('../models/Tareas'); // Usamos 'Tarea' singular (asumiendo que se corrigió el modelo)
-const Usuario = require('../models/Usuario');
+const Tarea = require('../models/Tareas'); 
+const Usuario = require('../models/Usuario'); // (Opcional si lo usas)
 
 // =======================================================
-// LÓGICA DEL ESTUDIANTE (Crear Entrega)
+// LÓGICA DEL ESTUDIANTE (Crear o Editar Entrega)
 // =======================================================
 
 // @desc    Crear o actualizar la entrega de una tarea (Estudiante)
@@ -17,13 +17,24 @@ const crearEntrega = asyncHandler(async (req, res) => {
         throw new Error('Acceso denegado. Solo los estudiantes pueden realizar entregas.');
     }
 
-    const { tareaId, archivoUrl, comentariosEstudiante } = req.body;
+    const { tareaId, comentariosEstudiante } = req.body;
     const estudianteId = req.usuario.id;
 
-    // 2. Validar campos obligatorios
-    if (!tareaId || !archivoUrl) {
+    // 2. VALIDACIÓN Y PROCESAMIENTO DE ARCHIVO (Obligatorio)
+    let archivoUrl = null;
+    
+    if (req.file) {
+        const nombreArchivo = req.file.filename;
+        // Construye la URL pública
+        archivoUrl = `${req.protocol}://${req.get('host')}/uploads/${nombreArchivo}`;
+    } else {
         res.status(400);
-        throw new Error('Faltan campos obligatorios: ID de la tarea y URL del archivo.');
+        throw new Error('Faltan campos obligatorios: Debes subir un archivo para entregar.');
+    }
+
+    if (!tareaId) {
+        res.status(400);
+        throw new Error('Falta el ID de la tarea.');
     }
 
     // 3. Verificar que la tarea exista
@@ -33,28 +44,49 @@ const crearEntrega = asyncHandler(async (req, res) => {
         throw new Error('La tarea especificada no existe.');
     }
 
-    // 4. Verificar si ya existe una entrega para esta tarea por parte de este estudiante (Unicidad)
+    // 4. Buscar si ya existe una entrega previa para esta tarea
     let entrega = await Entrega.findOne({ tarea: tareaId, estudiante: estudianteId });
 
+    // 5. Determinar si es entrega tardía comparando fechas
+    const fechaActual = new Date();
+    const fechaLimite = new Date(tarea.fechaEntrega);
+    const esTarde = fechaActual > fechaLimite;
+
     if (entrega) {
-        // Si ya existe, se actualiza 
-        entrega.archivoUrl = archivoUrl;
+        // --- MODO EDICIÓN (La entrega ya existe) ---
+
+        // RESTRICCIÓN 1: No se puede editar si ya fue calificada
+        // Verificamos si existe calificación y no es null
+        if (entrega.calificacion !== null && entrega.calificacion !== undefined) {
+            res.status(400);
+            throw new Error('No puedes editar la entrega: Ya ha sido calificada por el docente.');
+        }
+
+        // RESTRICCIÓN 2: No se puede editar si ya pasó la fecha límite
+        if (esTarde) {
+            res.status(400);
+            throw new Error('No puedes editar la entrega: La fecha límite ha expirado.');
+        }
+
+        // Si pasa las validaciones, actualizamos los datos
+        entrega.archivoUrl = archivoUrl; // Nuevo archivo reemplaza al anterior
         entrega.comentariosEstudiante = comentariosEstudiante;
-        entrega.fechaEntrega = Date.now();
-        entrega.estado = (entrega.fechaEntrega > tarea.fechaEntrega) ? 'Tarde' : 'Entregado';
+        entrega.fechaEntrega = Date.now(); // Actualizamos la fecha de entrega al momento actual
+        entrega.estado = 'Entregado'; // Reiniciamos el estado por si estaba en otro
         
         await entrega.save();
         res.status(200).json(entrega);
-    } else {
-        // Si no existe, se crea la nueva entrega
-        const estadoEntrega = (Date.now() > tarea.fechaEntrega) ? 'Tarde' : 'Entregado';
 
+    } else {
+        // --- MODO CREACIÓN (Primera vez) ---
+        
+        // Si es la primera vez, permitimos entregar aunque sea tarde (marcándolo como 'Tarde')
         entrega = await Entrega.create({
             tarea: tareaId,
             estudiante: estudianteId,
-            archivoUrl,
+            archivoUrl, // Guardamos la URL generada
             comentariosEstudiante,
-            estado: estadoEntrega,
+            estado: esTarde ? 'Tarde' : 'Entregado', // Marcamos si llegó tarde
         });
 
         res.status(201).json(entrega);
@@ -77,16 +109,15 @@ const obtenerEntregasPorTarea = asyncHandler(async (req, res) => {
 
     const { tareaId } = req.params;
 
-    // 1. Verificar que la tarea exista y pertenezca a este docente
+    // Verificar que la tarea exista y pertenezca a este docente (Seguridad extra)
     const tarea = await Tarea.findOne({ _id: tareaId, creador: req.usuario.id });
     if (!tarea) {
         res.status(404);
         throw new Error('Tarea no encontrada o no pertenece a este docente.');
     }
 
-    // 2. Obtener todas las entregas para esa tarea, poblando los datos del estudiante
     const entregas = await Entrega.find({ tarea: tareaId })
-        .populate('estudiante', 'nombre matricula email'); // Mostrar solo campos relevantes del estudiante
+        .populate('estudiante', 'nombre matricula email');
 
     res.status(200).json(entregas);
 });
@@ -103,30 +134,27 @@ const calificarEntrega = asyncHandler(async (req, res) => {
     
     const { calificacion, comentariosDocente } = req.body;
 
-    // 1. Validar calificación
     if (calificacion === undefined || calificacion === null) {
         res.status(400);
         throw new Error('La calificación es obligatoria.');
     }
 
-    // 2. Buscar la entrega
     const entrega = await Entrega.findById(req.params.entregaId);
     if (!entrega) {
         res.status(404);
         throw new Error('Entrega no encontrada.');
     }
 
-    // 3. Verificar que la tarea asociada pertenezca al docente (Seguridad)
+    // Verificar permisos sobre la tarea original
     const tarea = await Tarea.findById(entrega.tarea);
     if (!tarea || tarea.creador.toString() !== req.usuario.id) {
         res.status(401);
-        throw new Error('No está autorizado para calificar esta entrega (la tarea no es suya).');
+        throw new Error('No está autorizado para calificar esta entrega.');
     }
 
-    // 4. Actualizar la calificación y el estado
     entrega.calificacion = calificacion;
     entrega.comentariosDocente = comentariosDocente;
-    entrega.estado = 'Calificado'; // Cambia el estado
+    entrega.estado = 'Calificado';
     await entrega.save();
 
     res.status(200).json(entrega);
@@ -141,13 +169,11 @@ const obtenerMisEntregas = asyncHandler(async (req, res) => {
         throw new Error('Solo estudiantes pueden ver sus propias entregas.');
     }
 
-    // Buscamos todas las entregas donde el estudiante sea el usuario actual
-    // Y populamos la 'tarea' para saber de qué materia es
     const entregas = await Entrega.find({ estudiante: req.usuario.id })
         .populate({
             path: 'tarea',
-            select: 'titulo grupo puntuacionMaxima', // Traemos titulo y grupo
-            populate: { path: 'grupo', select: 'nombre' } // Y el nombre del grupo dentro de la tarea
+            select: 'titulo grupo puntuacionMaxima fechaEntrega', // Seleccionamos campos clave
+            populate: { path: 'grupo', select: 'nombre' }
         });
 
     res.status(200).json(entregas);

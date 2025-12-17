@@ -1,6 +1,8 @@
 const asyncHandler = require('express-async-handler');
-const Tarea = require('../models/Tareas'); // Plural: 'Tareas' (según tu confirmación)
+const Tarea = require('../models/Tareas');
 const Grupo = require('../models/Grupo');
+const fs = require('fs');
+const path = require('path');
 
 // @desc    Obtener todas las tareas relevantes para el usuario
 // @route   GET /api/tareas
@@ -41,34 +43,45 @@ const obtenerTareas = asyncHandler(async (req, res) => {
         throw new Error('Rol no reconocido.');
     }
 
+    // Doble verificación para asegurar que se retorna lo correcto
+    // (Esta línea podría ser redundante con el if/else de arriba, pero asegura el filtrado final)
+    tareas = await Tarea.find(req.usuario.rol === 'docente' ? { creador: req.usuario.id } : { grupo: { $in: req.usuario.grupos } })
+        .populate('grupo', 'nombre');
+
     res.status(200).json(tareas);
 });
 
-// @desc    Crear una nueva tarea
+// @desc    Crear una nueva tarea con Archivo
 // @route   POST /api/tareas
 // @access  Private (Docente)
 const crearTarea = asyncHandler(async (req, res) => {
     if (req.usuario.rol !== 'docente') {
         res.status(403);
-        throw new Error('Acceso denegado. Solo docentes pueden crear tareas.');
+        throw new Error('Acceso denegado.');
     }
 
+    // Cuando usas FormData, los campos de texto también vienen en req.body
     const { titulo, grupo, puntuacionMaxima, fechaEntrega, descripcion } = req.body;
 
-    // 1. Validar campos obligatorios
     if (!titulo || !grupo || !puntuacionMaxima || !fechaEntrega) {
         res.status(400);
-        throw new Error('Faltan campos obligatorios: título, grupo, puntuación y fecha de entrega.');
+        throw new Error('Faltan campos obligatorios.');
     }
 
-    // 2. Verificar que el grupo exista y pertenezca al docente
     const grupoExiste = await Grupo.findOne({ _id: grupo, docente: req.usuario.id });
     if (!grupoExiste) {
         res.status(404);
-        throw new Error('El grupo no existe o no pertenece a este docente.');
+        throw new Error('El grupo no existe o no es suyo.');
     }
 
-    // 3. Crear la tarea
+    // --- PROCESAR ARCHIVO ---
+    let archivoUrl = null;
+    if (req.file) {
+        // Construimos la URL completa: http://dominio.com/uploads/nombre.pdf
+        const nombreArchivo = req.file.filename;
+        archivoUrl = `${req.protocol}://${req.get('host')}/uploads/${nombreArchivo}`;
+    }
+
     const tarea = await Tarea.create({
         titulo,
         descripcion,
@@ -76,16 +89,17 @@ const crearTarea = asyncHandler(async (req, res) => {
         creador: req.usuario.id, 
         puntuacionMaxima,
         fechaEntrega: new Date(fechaEntrega),
+        archivoUrl // Guardamos la URL
     });
     
-    // 4. Actualizar el Grupo para incluir la nueva tarea
+    // Actualizamos el grupo para incluir la nueva tarea
     grupoExiste.tareas.push(tarea._id);
     await grupoExiste.save();
 
     res.status(201).json(tarea);
 });
 
-// @desc    Actualizar una tarea (CRUD - Update)
+// @desc    Actualizar una tarea (CRUD - Update) con gestión de archivos
 // @route   PUT /api/tareas/:id
 // @access  Private (Docente)
 const actualizarTarea = asyncHandler(async (req, res) => {
@@ -107,10 +121,27 @@ const actualizarTarea = asyncHandler(async (req, res) => {
         throw new Error('Usuario no autorizado. Esta tarea no fue creada por usted.');
     }
     
-    // 2. Actualizar la tarea
+    // 2. Preparar datos para actualizar
+    // Copiamos el body para modificarlo si es necesario
+    const datosActualizar = { ...req.body };
+
+    // --- LÓGICA DE ARCHIVOS EN ACTUALIZACIÓN ---
+    
+    // CASO A: El usuario subió un archivo nuevo para reemplazar el anterior
+    if (req.file) {
+        const nombreArchivo = req.file.filename;
+        datosActualizar.archivoUrl = `${req.protocol}://${req.get('host')}/uploads/${nombreArchivo}`;
+        
+        // (Opcional) Aquí se podría agregar código para borrar el archivo físico antiguo usando fs.unlink
+    } 
+    // CASO B: El usuario NO subió archivo, pero marcó la casilla "eliminarArchivo"
+    else if (req.body.eliminarArchivo === 'true') {
+        datosActualizar.archivoUrl = null; // Borramos la referencia en la BD
+    }
+
     const tareaActualizada = await Tarea.findByIdAndUpdate(
         req.params.id,
-        req.body,
+        datosActualizar,
         { new: true, runValidators: true } 
     );
 
@@ -145,6 +176,7 @@ const eliminarTarea = asyncHandler(async (req, res) => {
         { $pull: { tareas: tarea._id } } 
     );
     
+    // Eliminar el documento de la tarea
     await Tarea.deleteOne({ _id: req.params.id }); 
 
     res.status(200).json({ id: req.params.id, mensaje: 'Tarea eliminada con éxito.' });
