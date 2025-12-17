@@ -1,62 +1,89 @@
 const express = require('express');
-const cors = require('cors');
+const cors = require('cors'); // Lo mantenemos por si acaso, pero usaremos el manual primero
 const dotenv = require('dotenv').config(); 
 const { errorHandler } = require('./src/middlewares/errorMiddleware');
 const connectDB = require('./src/config/dbConexion'); 
-// Importar librerías de seguridad (mantener importaciones, solo comentar el uso)
+
+// Importar librerías de seguridad
 const mongoSanitize = require('express-mongo-sanitize');
 const rateLimit = require('express-rate-limit');
+
 const port = process.env.PORT || 5000; 
 
 // Conectar a la Base de Datos
 connectDB(); 
+
 const app = express();
 
-// CONFIGURACIÓN CRÍTICA DEL PROXY Y CORS
-// FIX CRÍTICO: Indica a Express que confíe en el proxy de desarrollo de React.
+// CONFIGURACIÓN DE SEGURIDAD, CORS Y PRIVATE NETWORK
+
 app.set('trust proxy', 1); 
 
-app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:3000'], // Frontend URLs
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// Middleware Manual para CORS y Private Network Access (PNA)
+app.use((req, res, next) => {
+    const allowedOrigins = [
+        'http://localhost:5173', 
+        'http://localhost:3000', 
+        'http://aaisforgg.jcarlos19.com'
+    ];
+    const origin = req.headers.origin;
 
-// MIDDLEWARES DE LECTURA Y SANITIZACIÓN (DEBEN IR PRIMERO)
+    // Verificar si el origen está permitido
+    if (allowedOrigins.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
 
-// Permite a Express leer JSON y URL-encoded data.
+    // Cabeceras necesarias para CORS
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+    // FIX CRÍTICO: Permitir acceso a red local (loopback) desde sitio externo
+    if (req.headers['access-control-request-private-network']) {
+        res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    }
+
+    // Responder inmediatamente a las peticiones de pre-vuelo (OPTIONS)
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(204);
+    }
+
+    next();
+});
+
+// MIDDLEWARES DE LECTURA Y SANITIZACIÓN DE DATOS
+
 app.use(express.json()); 
-app.use(express.urlencoded({extended: false})); 
+app.use(express.urlencoded({ extended: false })); 
 
-// Sanitización de Datos: Limpia datos antes de que lleguen a las rutas.
-// app.use(mongoSanitize()); // TEMPORALMENTE COMENTADO PARA EVITAR CONFLICTO
+// Sanitización de Datos 
+app.use(mongoSanitize());
 
-// Rate Limiting: Limita 100 peticiones por IP en 15 minutos.
+// Rate Limiting para prevenir abuso
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 100, // Limitar cada IP a 100 peticiones por ventana
+    windowMs: 15 * 60 * 1000, 
+    max: 100, 
     message: 'Demasiadas peticiones desde esta IP. Intente de nuevo en 15 minutos.',
 });
-// app.use(limiter); // TEMPORALMENTE COMENTADO PARA EVITAR CONFLICTO
+ app.use(limiter); 
 
-//RUTAS DE LA API 
 
-// Rutas de Usuarios/Autenticación
+// RUTAS DE LA API
+
 app.use('/api/usuarios', require('./src/routes/rutasUsuarios')); 
-// Rutas de Gestión Escolar (Grupos/Cursos)
 app.use('/api/grupos', require('./src/routes/rutasGrupos'));
-// Rutas de Gestión Escolar (TAREAS) 
 app.use('/api/tareas', require('./src/routes/rutasTareas'));
-// Rutas de Gestión Escolar (ENTREGAS) 
 app.use('/api/entregas', require('./src/routes/rutasEntregas'));
-// Rutas de Gestión Escolar (Alumnos - se usará para gestionar matrículas)
 app.use('/api/alumnos', require('./src/routes/rutasAlumnos')); 
-// Rutas de Gestión Escolar (MENSAJES) 
 app.use('/api/mensajes', require('./src/routes/rutasMensajes'));
 
-
-// Middleware de Errores (DEBE ir al final de todas las rutas)
+// Middleware de Errores (Al final)
 app.use(errorHandler);
 
-app.listen(port, () => console.log(`Servidor de Gestión Escolar escuchando en el puerto ${port}`));
+app.listen(port, () => {
+    console.log(`---`);
+    console.log(`🚀 Servidor de Gestión Escolar ejecutándose`);
+    console.log(`📍 Puerto: ${port}`);
+    console.log(`🌐 Dominios permitidos: http://aaisforgg.jcarlos19.com, localhost`);
+    console.log(`---`);
+});

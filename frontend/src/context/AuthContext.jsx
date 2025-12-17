@@ -1,7 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
 import { loginRequest, registerRequest } from "../services/authService";
 import { saveAuth, clearAuth, getUser } from "../utils/authUtils";
-import { toast } from 'react-toastify';
 
 export const AuthContext = createContext();
 
