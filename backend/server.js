@@ -63,7 +63,7 @@ app.use(mongoSanitize());
 // Rate Limiting para prevenir abuso
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, 
-    max: 100, 
+    max: 1000, 
     message: 'Demasiadas peticiones desde esta IP. Intente de nuevo en 15 minutos.',
 });
  app.use(limiter); 

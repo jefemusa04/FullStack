@@ -80,7 +80,7 @@ export const AuthProvider = ({ children }) => {
             };
 
             // ENVIAMOS LA PETICIÓN AL BACKEND (Esto es lo que faltaba)
-            const { data } = await axios.put(VITE_API_URL, { nombre }, config);
+            const { data } = await axios.put(`${import.meta.env.VITE_API_URL}/usuarios/perfil`, { nombre }, config);
 
             // Si el backend responde bien, actualizamos el estado local con LO QUE RESPONDIÓ EL SERVIDOR
             localStorage.setItem('user', JSON.stringify(data));
