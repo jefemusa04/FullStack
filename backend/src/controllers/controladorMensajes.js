@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
-const Mensaje = require('../models/Mensajes'); // <-- Importación corregida
-const Usuario = require('../models/Usuario'); // <-- Importación corregida
+const Mensaje = require('../models/Mensajes');
+const Usuario = require('../models/Usuario'); 
+const Grupo = require('../models/Grupo');
 
 // @desc    Obtener todos los mensajes entre el usuario logueado y otro usuario (historial de conversación)
 // @route   GET /api/mensajes/:destinatarioId
@@ -62,7 +63,50 @@ const enviarMensaje = asyncHandler(async (req, res) => {
     res.status(201).json(mensaje);
 });
 
+// @desc    Obtener lista de contactos disponibles (Compañeros de clase / Profesores)
+// @route   GET /api/mensajes/contactos
+// @access  Private
+const obtenerContactos = asyncHandler(async (req, res) => {
+    const userId = req.usuario.id;
+    let contactos = [];
+
+    if (req.usuario.rol === 'docente') {
+        // SI SOY DOCENTE: Busco a mis alumnos de todos mis grupos
+        const grupos = await Grupo.find({ docente: userId })
+            .populate('estudiantes', 'nombre email rol');
+        
+        // Extraemos todos los estudiantes y eliminamos duplicados
+        const estudiantesMap = new Map();
+        grupos.forEach(grupo => {
+            grupo.estudiantes.forEach(est => {
+                if (est) estudiantesMap.set(est._id.toString(), est);
+            });
+        });
+        contactos = Array.from(estudiantesMap.values());
+
+    } else if (req.usuario.rol === 'estudiante') {
+        // SI SOY ESTUDIANTE: Busco a mis profesores (dueños de mis grupos)
+        // Primero buscamos al usuario para ver sus grupos
+        const usuario = await Usuario.findById(userId);
+        
+        // Buscamos los grupos donde está inscrito y populamos el docente
+        const grupos = await Grupo.find({ _id: { $in: usuario.grupos } })
+            .populate('docente', 'nombre email rol');
+
+        const docentesMap = new Map();
+        grupos.forEach(grupo => {
+            if (grupo.docente) {
+                docentesMap.set(grupo.docente._id.toString(), grupo.docente);
+            }
+        });
+        contactos = Array.from(docentesMap.values());
+    }
+
+    res.status(200).json(contactos);
+});
+
 module.exports = {
     obtenerMensajes,
     enviarMensaje,
+    obtenerContactos,
 };

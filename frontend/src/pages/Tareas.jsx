@@ -2,8 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSearchParams } from 'react-router-dom';
 
+// IMPORTACIÓN DE SERVICIOS
+import { getTareas, createTarea, updateTarea, deleteTarea } from '../services/tareasService';
+import { getGrupos } from '../services/gruposService'; // <--- Nuevo: Importamos servicio de grupos
 
+// ==========================================
 // VISTA DOCENTE
+// ==========================================
 const TareasVistaDocente = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const grupoFiltro = searchParams.get('grupo');
@@ -11,6 +16,7 @@ const TareasVistaDocente = () => {
     // Estados de navegación
     const [view, setView] = useState('list'); // 'list', 'form', 'entregas'
     const [currentTask, setCurrentTask] = useState(null);
+    const [loading, setLoading] = useState(false);
 
     // Estado del Formulario
     const initialFormState = { 
@@ -22,29 +28,59 @@ const TareasVistaDocente = () => {
     };
     const [formData, setFormData] = useState(initialFormState);
 
-    // Datos Mock (Tareas)
-    const [tareas, setTareas] = useState([
-        { _id: 't1', titulo: 'Ensayo Final', descripcion: 'Escribir sobre la Rev. Industrial.', grupo: 'Matemáticas I', fechaEntrega: '2025-12-20', puntuacionMaxima: 100 },
-        { _id: 't2', titulo: 'Presentación Oral', descripcion: 'Video de 5 minutos.', grupo: 'Historia Universal', fechaEntrega: '2025-12-15', puntuacionMaxima: 20 },
-        { _id: 't3', titulo: 'Proyecto Final', descripcion: 'Desarrollo web completo.', grupo: 'Programación Web', fechaEntrega: '2025-12-10', puntuacionMaxima: 50 },
-    ]);
+    // ESTADO DE DATOS REALES
+    const [tareas, setTareas] = useState([]);
+    const [listaGrupos, setListaGrupos] = useState([]); // <--- Nuevo: Almacena grupos para el Select
 
-    // Datos Mock (Entregas)
+    // --- CARGAR DATOS (Tareas y Grupos) ---
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            // Hacemos ambas peticiones en paralelo para ser más rápidos
+            const [tareasData, gruposData] = await Promise.all([
+                getTareas(),
+                getGrupos()
+            ]);
+            
+            setTareas(tareasData);
+            setListaGrupos(gruposData); // Guardamos los grupos reales
+        } catch (error) {
+            console.error("Error al cargar datos:", error);
+            alert("Error de conexión. Revisa la consola.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Cargar al iniciar el componente
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    // --- DATOS MOCK DE ENTREGAS ---
     const [entregasMock] = useState([
         { _id: 'e1', alumno: 'Juan Pérez', fecha: '2025-12-18', estado: 'Entregado', archivo: 'ensayo.pdf', calificacion: null },
         { _id: 'e2', alumno: 'Maria Gomez', fecha: '-', estado: 'Pendiente', archivo: null, calificacion: null },
     ]);
 
-    const tareasMostradas = grupoFiltro ? tareas.filter(t => t.grupo === grupoFiltro) : tareas;
+    // Filtrado local
+    const tareasMostradas = grupoFiltro ? tareas.filter(t => {
+        const nombreGrupo = t.grupo?.nombre || t.grupo; 
+        // Si el filtro es por ID (poco probable en URL amigable) o Nombre
+        return nombreGrupo === grupoFiltro || t.grupo?._id === grupoFiltro;
+    }) : tareas;
+
     const [searchTerm, setSearchTerm] = useState('');
     const tareasFiltradasPorBusqueda = tareasMostradas.filter(t => {
         const term = searchTerm.trim().toLowerCase();
         if (!term) return true;
-        return `${t.titulo} ${t.descripcion} ${t.grupo}`.toLowerCase().includes(term);
+        const nombreGrupo = t.grupo?.nombre || t.grupo || '';
+        return `${t.titulo} ${t.descripcion} ${nombreGrupo}`.toLowerCase().includes(term);
     });
 
     // --- LÓGICA DE SEMANAS ---
     const getWeekRangeLabel = (dateStr) => {
+        if (!dateStr) return 'Sin Fecha';
         const d = new Date(dateStr);
         const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
         const dayOfWeek = (day.getDay() + 6) % 7; 
@@ -64,18 +100,22 @@ const TareasVistaDocente = () => {
             map.get(label).push(it);
         });
         return Array.from(map.entries()).sort((a, b) => {
-            const aDate = new Date(a[1][0].fechaEntrega);
-            const bDate = new Date(b[1][0].fechaEntrega);
-            return aDate - bDate;
+            const dateA = new Date(a[1][0].fechaEntrega || 0);
+            const dateB = new Date(b[1][0].fechaEntrega || 0);
+            return dateA - dateB;
         });
     };
 
     const grouped = groupByWeek(tareasFiltradasPorBusqueda);
-    const [selectedWeek, setSelectedWeek] = useState(grouped.length ? grouped[0][0] : null);
+    const [selectedWeek, setSelectedWeek] = useState(null);
+    
+    useEffect(() => {
+        if (!selectedWeek && grouped.length > 0) setSelectedWeek(grouped[0][0]);
+    }, [grouped, selectedWeek]);
+
     const [showSidebar, setShowSidebar] = useState(true);
     const weekRefs = useRef({});
 
-    // Scroll automático
     useEffect(() => {
         if (selectedWeek && weekRefs.current[selectedWeek]) {
             weekRefs.current[selectedWeek].scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -83,18 +123,57 @@ const TareasVistaDocente = () => {
     }, [selectedWeek]);
 
     // --- MANEJADORES ---
-    const handleOpenCreate = () => { setFormData(initialFormState); setCurrentTask(null); setView('form'); };
-    const handleOpenEdit = (tarea) => { setFormData(tarea); setCurrentTask(tarea); setView('form'); };
-    const handleSaveTask = (e) => {
-        e.preventDefault();
-        if (currentTask) {
-            setTareas(tareas.map(t => (t._id === currentTask._id ? { ...formData, _id: t._id } : t)));
-        } else {
-            setTareas([...tareas, { ...formData, _id: Date.now().toString() }]);
-        }
-        setView('list');
+    
+    const handleOpenCreate = () => { 
+        setFormData(initialFormState); 
+        setCurrentTask(null); 
+        setView('form'); 
     };
-    const handleDelete = (id) => { if(window.confirm('¿Eliminar tarea?')) setTareas(tareas.filter(t => t._id !== id)); };
+
+    const handleOpenEdit = (tarea) => {
+        const grupoValue = typeof tarea.grupo === 'object' ? tarea.grupo?._id : tarea.grupo;
+        let fechaFormat = '';
+        if(tarea.fechaEntrega) fechaFormat = new Date(tarea.fechaEntrega).toISOString().split('T')[0];
+
+        setFormData({
+            ...tarea,
+            grupo: grupoValue,
+            fechaEntrega: fechaFormat
+        });
+        setCurrentTask(tarea);
+        setView('form');
+    };
+
+    const handleSaveTask = async (e) => {
+        e.preventDefault();
+        try {
+            if (currentTask) {
+                await updateTarea(currentTask._id, formData);
+                alert("Tarea actualizada correctamente.");
+            } else {
+                await createTarea(formData);
+                alert("Tarea creada exitosamente.");
+            }
+            fetchData(); // Recargar todo
+            setView('list');
+        } catch (error) {
+            console.error("Error guardando:", error);
+            const msg = error.response?.data?.message || 'Error al guardar la tarea';
+            alert(msg);
+        }
+    };
+
+    const handleDelete = async (id) => { 
+        if(window.confirm('¿Eliminar esta tarea permanentemente?')) {
+            try {
+                await deleteTarea(id);
+                fetchData(); 
+            } catch (error) {
+                alert('No se pudo eliminar la tarea.');
+            }
+        } 
+    };
+
     const handleViewSubmissions = (tarea) => { setCurrentTask(tarea); setView('entregas'); };
 
     // Estilos Inline
@@ -118,22 +197,60 @@ const TareasVistaDocente = () => {
                     <div className="form-header-global"><h2 className="form-title-global">Información de la Actividad</h2></div>
                     <form onSubmit={handleSaveTask}>
                         <div className="form-grid-global">
-                            <div><label className="label-global">Título</label><input type="text" className="input-global" value={formData.titulo} onChange={e => setFormData({...formData, titulo: e.target.value})} required placeholder="Ej: Examen Parcial" /></div>
-                            <div><label className="label-global">Grupo</label><select className="input-global" value={formData.grupo} onChange={e => setFormData({...formData, grupo: e.target.value})} required><option value="">Selecciona...</option><option value="Matemáticas I">Matemáticas I</option><option value="Historia Universal">Historia Universal</option><option value="Programación Web">Programación Web</option></select></div>
+                            <div>
+                                <label className="label-global">Título</label>
+                                <input type="text" className="input-global" value={formData.titulo} onChange={e => setFormData({...formData, titulo: e.target.value})} required placeholder="Ej: Examen Parcial" />
+                            </div>
+                            
+                            {/* --- SELECTOR DE GRUPOS DINÁMICO --- */}
+                            <div>
+                                <label className="label-global">Grupo</label>
+                                <select 
+                                    className="input-global" 
+                                    value={formData.grupo} 
+                                    onChange={e => setFormData({...formData, grupo: e.target.value})} 
+                                    required
+                                >
+                                    <option value="">Selecciona un grupo...</option>
+                                    {listaGrupos.length > 0 ? (
+                                        listaGrupos.map((g) => (
+                                            <option key={g._id} value={g._id}>
+                                                {g.nombre} ({g.clave})
+                                            </option>
+                                        ))
+                                    ) : (
+                                        <option value="" disabled>No tienes grupos creados</option>
+                                    )}
+                                </select>
+                            </div>
+                            {/* ---------------------------------- */}
+                            
                         </div>
                         <div className="form-grid-global">
-                            <div><label className="label-global">Puntos Máximos</label><input type="number" className="input-global" value={formData.puntuacionMaxima} onChange={e => setFormData({...formData, puntuacionMaxima: e.target.value})} required /></div>
-                            <div><label className="label-global">Fecha de Entrega</label><input type="date" className="input-global" value={formData.fechaEntrega} onChange={e => setFormData({...formData, fechaEntrega: e.target.value})} required /></div>
+                            <div>
+                                <label className="label-global">Puntos Máximos</label>
+                                <input type="number" className="input-global" value={formData.puntuacionMaxima} onChange={e => setFormData({...formData, puntuacionMaxima: e.target.value})} required />
+                            </div>
+                            <div>
+                                <label className="label-global">Fecha de Entrega</label>
+                                <input type="date" className="input-global" value={formData.fechaEntrega} onChange={e => setFormData({...formData, fechaEntrega: e.target.value})} required />
+                            </div>
                         </div>
-                        <div><label className="label-global">Descripción</label><textarea className="input-global" rows="4" value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} placeholder="Instrucciones..."></textarea></div>
-                        <div className="flex justify-end gap-3 mt-6"><button type="button" onClick={() => setView('list')} className="btn btn-cancel">Cancelar</button><button type="submit" className="btn btn-create">{currentTask ? '💾 Guardar Cambios' : '🚀 Publicar Tarea'}</button></div>
+                        <div>
+                            <label className="label-global">Descripción</label>
+                            <textarea className="input-global" rows="4" value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} placeholder="Instrucciones..."></textarea>
+                        </div>
+                        <div className="flex justify-end gap-3 mt-6">
+                            <button type="button" onClick={() => setView('list')} className="btn btn-cancel">Cancelar</button>
+                            <button type="submit" className="btn btn-create">{currentTask ? '💾 Guardar Cambios' : '🚀 Publicar Tarea'}</button>
+                        </div>
                     </form>
                 </div>
             </div>
         );
     }
 
-    // VISTA ENTREGAS
+    // VISTA ENTREGAS (Mantiene Mock)
     if (view === 'entregas') {
         return (
             <div className="page-container">
@@ -175,14 +292,12 @@ const TareasVistaDocente = () => {
     return (
         <div className="page-container" style={{display: 'flex', gap: 20, position: 'relative'}}>
             
-            {/* Pestaña móvil del sidebar */}
             {!showSidebar && (
                 <div style={tabStyle} role="button" onClick={() => setShowSidebar(true)} title="Abrir Semanas">
                     <div className="week-tab-circle"><span style={{fontSize:16, lineHeight:1}}>☰</span></div>
                 </div>
             )}
 
-            {/* SIDEBAR DE SEMANAS */}
             {showSidebar && (
                 <aside className="weeks-sidebar" style={{width: 200, flexShrink: 0}}>
                     <div className="page-header" style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '1rem'}}>
@@ -207,9 +322,7 @@ const TareasVistaDocente = () => {
                 </aside>
             )}
 
-            {/* CONTENIDO PRINCIPAL */}
             <main style={{flex:1, minWidth: 0}}>
-                {/* Header Principal */}
                 <div className="page-header" style={{marginBottom: '1.5rem'}}>
                     <div>
                         <h1 className="page-title">{grupoFiltro ? `Gestión: ${grupoFiltro}` : 'Gestión de Tareas'}</h1>
@@ -224,7 +337,6 @@ const TareasVistaDocente = () => {
                     <button onClick={handleOpenCreate} className="btn btn-create">➕ Crear Tarea</button>
                 </div>
 
-                {/* Stats Row */}
                 <div className="stats-row">
                     <div className="stat-card-global">
                         <div className="stat-icon-global">📋</div>
@@ -233,16 +345,8 @@ const TareasVistaDocente = () => {
                             <div className="stat-label-global">Tareas Activas</div>
                         </div>
                     </div>
-                    <div className="stat-card-global">
-                        <div className="stat-icon-global">⏳</div>
-                        <div className="stat-info-global">
-                            <div className="stat-value-global">3</div>
-                            <div className="stat-label-global">Por Vencer</div>
-                        </div>
-                    </div>
                 </div>
 
-                {/* LISTA DE TAREAS AGRUPADA POR SEMANA */}
                 <div className="data-container-global" style={{padding: 18, borderRadius: 8}}>
                     <div className="data-header-global" style={{padding: '0 6px'}}>
                         <h2 className="data-title-global">{selectedWeek || 'Cronograma de Actividades'}</h2>
@@ -252,35 +356,41 @@ const TareasVistaDocente = () => {
                     </div>
 
                     <div>
-                        {grouped.length > 0 ? (
-                            grouped.map(([label, items]) => (
-                                <div key={label} ref={el => (weekRefs.current[label] = el)} style={{marginBottom:16, padding:'12px 12px', borderBottom: selectedWeek===label ? '2px solid #e6eef8' : '1px solid #eee', background: selectedWeek===label ? '#fbfdff' : 'transparent', borderRadius:6}}>
-                                    <h3 style={{marginBottom:8, display:'flex', justifyContent:'space-between', alignItems:'center', color: 'var(--color-primary)', fontWeight: 'bold'}}>
-                                        <span>{label}</span>
-                                        <span style={{fontSize:'0.85rem', color:'#666', fontWeight:'normal'}}>{items.length} actividades</span>
-                                    </h3>
-                                    <ul style={{listStyle:'none', padding:0}}>
-                                        {items.map(t => (
-                                            <li key={t._id} style={{padding:16, borderBottom:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#fff', gap: '1rem', flexWrap: 'wrap'}}>
-                                                <div style={{flex: 1}}>
-                                                    <div style={{fontWeight:700, color:'#1e293b', fontSize: '1.05rem'}}>{t.titulo}</div>
-                                                    <div style={{fontSize:'0.9rem', color:'#334155', marginTop:6}} className="task-description">{t.descripcion}</div>
-                                                    <div style={{fontSize:'0.85rem', color:'#64748b', marginTop: 8}}>{t.grupo} • Puntos: {t.puntuacionMaxima}</div>
-                                                    <div style={{fontSize:'0.85rem', color:'#64748b', marginTop: 4}}>Entrega: {t.fechaEntrega}</div>
-                                                </div>
-                                                
-                                                <div className="actions-row-global">
-                                                    <button onClick={() => handleViewSubmissions(t)} className="action-btn-global" title="Ver Entregas">👁️</button>
-                                                    <button onClick={() => handleOpenEdit(t)} className="action-btn-global" title="Editar">✏️</button>
-                                                    <button onClick={() => handleDelete(t._id)} className="action-btn-global delete" title="Eliminar">🗑️</button>
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            ))
-                        ) : (
-                            <div style={{padding: '2rem', textAlign: 'center', color: '#999'}}>No hay tareas para mostrar.</div>
+                        {loading ? <p style={{padding:20}}>Cargando datos...</p> : (
+                             grouped.length > 0 ? (
+                                grouped.map(([label, items]) => (
+                                    <div key={label} ref={el => (weekRefs.current[label] = el)} style={{marginBottom:16, padding:'12px 12px', borderBottom: selectedWeek===label ? '2px solid #e6eef8' : '1px solid #eee', background: selectedWeek===label ? '#fbfdff' : 'transparent', borderRadius:6}}>
+                                        <h3 style={{marginBottom:8, display:'flex', justifyContent:'space-between', alignItems:'center', color: 'var(--color-primary)', fontWeight: 'bold'}}>
+                                            <span>{label}</span>
+                                            <span style={{fontSize:'0.85rem', color:'#666', fontWeight:'normal'}}>{items.length} actividades</span>
+                                        </h3>
+                                        <ul style={{listStyle:'none', padding:0}}>
+                                            {items.map(t => (
+                                                <li key={t._id} style={{padding:16, borderBottom:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#fff', gap: '1rem', flexWrap: 'wrap'}}>
+                                                    <div style={{flex: 1}}>
+                                                        <div style={{fontWeight:700, color:'#1e293b', fontSize: '1.05rem'}}>{t.titulo}</div>
+                                                        <div style={{fontSize:'0.9rem', color:'#334155', marginTop:6}} className="task-description">{t.descripcion}</div>
+                                                        <div style={{fontSize:'0.85rem', color:'#64748b', marginTop: 8}}>
+                                                            {t.grupo?.nombre || t.grupo} • Puntos: {t.puntuacionMaxima}
+                                                        </div>
+                                                        <div style={{fontSize:'0.85rem', color:'#64748b', marginTop: 4}}>
+                                                            Entrega: {t.fechaEntrega ? new Date(t.fechaEntrega).toLocaleDateString() : 'Sin fecha'}
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="actions-row-global">
+                                                        <button onClick={() => handleViewSubmissions(t)} className="action-btn-global" title="Ver Entregas">👁️</button>
+                                                        <button onClick={() => handleOpenEdit(t)} className="action-btn-global" title="Editar">✏️</button>
+                                                        <button onClick={() => handleDelete(t._id)} className="action-btn-global delete" title="Eliminar">🗑️</button>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ))
+                            ) : (
+                                <div style={{padding: '2rem', textAlign: 'center', color: '#999'}}>No se encontraron tareas.</div>
+                            )
                         )}
                     </div>
                 </div>
@@ -289,29 +399,43 @@ const TareasVistaDocente = () => {
     );
 };
 
+// ==========================================
 // VISTA ESTUDIANTE: Estilo Calificaciones
+// ==========================================
 const TareasVistaEstudiante = ({ user }) => {
     const [searchParams, setSearchParams] = useSearchParams();
     const grupoFiltro = searchParams.get('grupo');
 
-    // Mock de tareas
-    const [tareas] = useState([
-        { _id: 't1', titulo: 'Ensayo Final', grupo: 'Matemáticas I', fechaEntrega: '2025-12-20', descripcion: 'Redacta un ensayo...', entrega: { estado: 'Pendiente' } },
-        { _id: 't2', titulo: 'Quiz Semanal', grupo: 'Matemáticas I', fechaEntrega: '2025-12-16', descripcion: 'Auto-evaluación...', entrega: { estado: 'Entregado' } },
-        { _id: 't3', titulo: 'Proyecto Grupo', grupo: 'Programación Web', fechaEntrega: '2025-12-11', descripcion: 'Desarrolla una SPA...', entrega: { estado: 'Pendiente' } },
-        { _id: 't4', titulo: 'Lectura', grupo: 'Historia Universal', fechaEntrega: '2025-12-08', descripcion: 'Lee el capítulo 4...', entrega: { estado: 'Pendiente' } },
-    ]);
+    const [tareas, setTareas] = useState([]);
+    const [loading, setLoading] = useState(false);
 
-    const tareasFiltradas = grupoFiltro ? tareas.filter(t => t.grupo === grupoFiltro) : tareas;
+    useEffect(() => {
+        const fetchTareasEstudiante = async () => {
+            setLoading(true);
+            try {
+                const data = await getTareas();
+                setTareas(data);
+            } catch (error) {
+                console.error("Error cargando tareas:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchTareasEstudiante();
+    }, []);
+
+    const tareasFiltradas = grupoFiltro ? tareas.filter(t => (t.grupo?.nombre || t.grupo) === grupoFiltro) : tareas;
     const [searchTerm, setSearchTerm] = useState('');
+    
     const tareasFiltradasPorBusqueda = tareasFiltradas.filter(t => {
         const term = searchTerm.trim().toLowerCase();
         if (!term) return true;
-        return `${t.titulo} ${t.descripcion} ${t.grupo}`.toLowerCase().includes(term);
+        const nombreGrupo = t.grupo?.nombre || t.grupo || '';
+        return `${t.titulo} ${t.descripcion} ${nombreGrupo}`.toLowerCase().includes(term);
     });
 
-    // Helpers
     const getWeekRangeLabel = (dateStr) => {
+        if(!dateStr) return 'Sin Fecha';
         const d = new Date(dateStr);
         const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
         const dayOfWeek = (day.getDay() + 6) % 7; 
@@ -331,14 +455,19 @@ const TareasVistaEstudiante = ({ user }) => {
             map.get(label).push(it);
         });
         return Array.from(map.entries()).sort((a, b) => {
-            const aDate = new Date(a[1][0].fechaEntrega);
-            const bDate = new Date(b[1][0].fechaEntrega);
+            const aDate = new Date(a[1][0].fechaEntrega || 0);
+            const bDate = new Date(b[1][0].fechaEntrega || 0);
             return aDate - bDate;
         });
     };
 
     const grouped = groupByWeek(tareasFiltradasPorBusqueda);
-    const [selectedWeek, setSelectedWeek] = useState(grouped.length ? grouped[0][0] : null);
+    const [selectedWeek, setSelectedWeek] = useState(null);
+
+    useEffect(() => {
+        if (!selectedWeek && grouped.length > 0) setSelectedWeek(grouped[0][0]);
+    }, [grouped, selectedWeek]);
+
     const [showSidebar, setShowSidebar] = useState(true);
     const weekRefs = useRef({});
     const [modalOpen, setModalOpen] = useState(false);
@@ -407,33 +536,37 @@ const TareasVistaEstudiante = ({ user }) => {
                     </div>
 
                     <div>
-                        {grouped.map(([label, items]) => (
-                            <div key={label} ref={el => (weekRefs.current[label] = el)} style={{marginBottom:16, padding:'12px 12px', borderBottom: selectedWeek===label ? '2px solid #e6eef8' : '1px solid #eee', background: selectedWeek===label ? '#fbfdff' : 'transparent', borderRadius:6}}>
-                                <h3 style={{marginBottom:8, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                                    <span>{label}</span>
-                                    <span style={{fontSize:'0.85rem', color:'#666'}}>{items.length} tarea{items.length>1?'s':''}</span>
-                                </h3>
-                                <ul style={{listStyle:'none', padding:0}}>
-                                    {items.map(t => (
-                                        <li key={t._id} style={{padding:12, borderBottom:'1px solid #eee', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#fff'}}>
-                                            <div>
-                                                <div style={{fontWeight:700, color:'#0b3b66'}}>{t.titulo}</div>
-                                                <div style={{fontSize:'0.85rem', color:'#666'}}>{t.grupo} • Entrega: {t.fechaEntrega}</div>
-                                            </div>
-                                            <div>
-                                                <span className={`badge-pill ${t.entrega.estado==='Entregado' ? 'success' : 'warning'}`} style={{marginRight:8}}>{t.entrega.estado}</span>
-                                                <button className="btn btn-view" onClick={() => openModal(t)}>Ver</button>
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        ))}
+                        {loading ? <p style={{padding:20}}>Cargando...</p> : (
+                            grouped.map(([label, items]) => (
+                                <div key={label} ref={el => (weekRefs.current[label] = el)} style={{marginBottom:16, padding:'12px 12px', borderBottom: selectedWeek===label ? '2px solid #e6eef8' : '1px solid #eee', background: selectedWeek===label ? '#fbfdff' : 'transparent', borderRadius:6}}>
+                                    <h3 style={{marginBottom:8, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                                        <span>{label}</span>
+                                        <span style={{fontSize:'0.85rem', color:'#666'}}>{items.length} tarea{items.length>1?'s':''}</span>
+                                    </h3>
+                                    <ul style={{listStyle:'none', padding:0}}>
+                                        {items.map(t => (
+                                            <li key={t._id} style={{padding:12, borderBottom:'1px solid #eee', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#fff'}}>
+                                                <div>
+                                                    <div style={{fontWeight:700, color:'#0b3b66'}}>{t.titulo}</div>
+                                                    <div style={{fontSize:'0.85rem', color:'#666'}}>
+                                                        {t.grupo?.nombre || t.grupo} • Entrega: {new Date(t.fechaEntrega).toLocaleDateString()}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <span className={`badge-pill warning`} style={{marginRight:8}}>Pendiente</span>
+                                                    <button className="btn btn-view" onClick={() => openModal(t)}>Ver</button>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             </main>
 
-            {/* Modal de detalle de tarea */}
+            {/* Modal */}
             {modalOpen && modalTask && (
                 <div className="modal-overlay" onClick={closeModal}>
                     <div className="modal-box" onClick={e => e.stopPropagation()}>
@@ -442,12 +575,15 @@ const TareasVistaEstudiante = ({ user }) => {
                             <button className="modal-close" onClick={closeModal}>✕</button>
                         </div>
                         <div className="modal-body">
-                            <p style={{marginBottom:12}}><strong>Grupo:</strong> {modalTask.grupo} • <strong>Entrega:</strong> {modalTask.fechaEntrega}</p>
+                            <p style={{marginBottom:12}}>
+                                <strong>Grupo:</strong> {modalTask.grupo?.nombre || modalTask.grupo} • 
+                                <strong>Entrega:</strong> {new Date(modalTask.fechaEntrega).toLocaleDateString()}
+                            </p>
                             <div style={{marginBottom:12}}>{modalTask.descripcion}</div>
                             <div style={{marginTop:12}}>
-                                <h4 style={{marginBottom:8}}>Submission status</h4>
+                                <h4 style={{marginBottom:8}}>Estado de entrega</h4>
                                 <div className="stat-card-global" style={{padding:'12px'}}>
-                                    <div style={{fontWeight:700}}>{modalTask.entrega.estado === 'Entregado' ? 'Submitted for grading' : 'Not submitted'}</div>
+                                    <div style={{fontWeight:700}}>Pendiente (Sin conexión a entregas)</div>
                                 </div>
                             </div>
                         </div>
@@ -460,9 +596,9 @@ const TareasVistaEstudiante = ({ user }) => {
 
 
 //COMPONENTE PRINCIPAL
-
 const Tareas = () => {
     const { user } = useAuth();
+    if (!user) return <div>Cargando usuario...</div>;
     return user?.rol === 'docente' ? <TareasVistaDocente /> : <TareasVistaEstudiante user={user} />;
 };
 

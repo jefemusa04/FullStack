@@ -17,5 +17,10 @@ export const calificarEntrega = async (entregaId, calificacionData) => {
   return res.data;
 };
 
-const entregasService = { createEntrega, getEntregasByTarea, calificarEntrega };
+export const getMisEntregas = async () => {
+  const res = await api.get(`${API_PATH}/mis-entregas`);
+  return res.data;
+};
+
+const entregasService = { createEntrega, getEntregasByTarea, calificarEntrega, getMisEntregas };
 export default entregasService;

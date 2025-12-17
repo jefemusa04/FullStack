@@ -242,7 +242,7 @@ const Dashboard = () => {
                                             <span className="course-meta-text">
                                                 {/* Validamos si existe el array de alumnos */}
                                                 {isDocente 
-                                                    ? `${grupo.alumnos?.length || 0} Alumnos` 
+                                                    ? `${grupo.estudiantes?.length || 0} Alumnos` 
                                                     : 'Profesor Titular'}
                                             </span>
                                         </div>
