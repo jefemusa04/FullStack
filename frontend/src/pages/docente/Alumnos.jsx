@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
+import ConfirmModal from '../../components/ConfirmModal';
 import StudentCreationForm from '../../components/docente/StudentCreationForm';
 import { getAlumnosPorGrupo, registrarNuevoAlumno, desmatricularAlumno } from '../../services/alumnosService';
 import { getGrupos, agregarAlumnoExistente } from '../../services/gruposService';
@@ -10,10 +11,13 @@ export default function AlumnosPage() {
     const [loading, setLoading] = useState(false);
 
     // --- ESTADOS DE DATOS (BACKEND) ---
-    const [grupos, setGrupos] = useState([]);           
-    const [selectedGroupId, setSelectedGroupId] = useState(''); 
-    const [alumnos, setAlumnos] = useState([]);         
+    const [grupos, setGrupos] = useState([]);
+    const [selectedGroupId, setSelectedGroupId] = useState('');
+    const [alumnos, setAlumnos] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+
+    // MODAL STATE
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', action: null });
 
     // CARGAR GRUPOS AL INICIAR
     useEffect(() => {
@@ -38,7 +42,7 @@ export default function AlumnosPage() {
             const lista = await getAlumnosPorGrupo(selectedGroupId);
             setAlumnos(lista);
         } catch (error) {
-            setAlumnos([]); 
+            setAlumnos([]);
         } finally {
             setLoading(false);
         }
@@ -71,20 +75,27 @@ export default function AlumnosPage() {
         }
     };
 
-    const handleDelete = async (alumnoId, nombre) => {
-        if (!window.confirm(`¿Eliminar a ${nombre} de este grupo?`)) return;
-        try {
-            await desmatricularAlumno(selectedGroupId, alumnoId);
-            toast.info("Alumno eliminado");
-            setAlumnos(alumnos.filter(a => a._id !== alumnoId));
-        } catch (error) {
-            toast.error("Error al eliminar");
-        }
+    const handleDelete = (alumnoId, nombre) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Eliminar Alumno',
+            message: `¿Estás seguro de eliminar a ${nombre} de este grupo?`,
+            action: async () => {
+                try {
+                    await desmatricularAlumno(selectedGroupId, alumnoId);
+                    toast.info("Alumno eliminado");
+                    setAlumnos(alumnos.filter(a => a._id !== alumnoId));
+                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                } catch (error) {
+                    toast.error("Error al eliminar");
+                }
+            }
+        });
     };
 
     // Filtro de búsqueda local
-    const filtered = alumnos.filter(a => 
-        a.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const filtered = alumnos.filter(a =>
+        a.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         a.email?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -98,8 +109,8 @@ export default function AlumnosPage() {
                     <h1 className="page-title">👥 Gestión de Estudiantes</h1>
                     <p className="page-subtitle">Administra el acceso y los grupos de tus alumnos</p>
                 </div>
-                <button 
-                    onClick={() => setShowForm(!showForm)} 
+                <button
+                    onClick={() => setShowForm(!showForm)}
                     disabled={!selectedGroupId}
                     className={`btn ${showForm ? "btn-cancel" : "btn-create"} ${!selectedGroupId && "opacity-50 cursor-not-allowed"}`}
                 >
@@ -110,10 +121,10 @@ export default function AlumnosPage() {
             {/* FORMULARIO DE CREACIÓN (Dentro de su contenedor global) */}
             {showForm && (
                 <div className="form-container-global mb-6 animate-fade-in-down">
-                    <StudentCreationForm 
-                        onSubmit={handleSaveStudent} 
-                        onCancel={() => setShowForm(false)} 
-                        grupos={grupos} 
+                    <StudentCreationForm
+                        onSubmit={handleSaveStudent}
+                        onCancel={() => setShowForm(false)}
+                        grupos={grupos}
                         grupoPreseleccionado={selectedGroupId}
                     />
                 </div>
@@ -141,12 +152,12 @@ export default function AlumnosPage() {
             <div className="data-container-global">
                 <div className="data-header-global flex-col md:flex-row gap-4 items-start md:items-center">
                     <h2 className="data-title-global">Directorio de Alumnos</h2>
-                    
+
                     {/* CONTROLES: Filtro y Buscador juntos */}
                     <div className="data-controls-global flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                        
+
                         {/* SELECTOR DE GRUPO */}
-                        <select 
+                        <select
                             className="input-global py-2 pl-3 pr-8 cursor-pointer min-w-[200px]"
                             value={selectedGroupId}
                             onChange={(e) => setSelectedGroupId(e.target.value)}
@@ -160,12 +171,12 @@ export default function AlumnosPage() {
                         </select>
 
                         {/* BUSCADOR */}
-                        <input 
-                            type="text" 
-                            placeholder="🔍 Buscar estudiante..." 
-                            className="global-search-input" 
-                            value={searchTerm} 
-                            onChange={e => setSearchTerm(e.target.value)} 
+                        <input
+                            type="text"
+                            placeholder="🔍 Buscar estudiante..."
+                            className="global-search-input"
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
                         />
                     </div>
                 </div>
@@ -211,9 +222,9 @@ export default function AlumnosPage() {
                                     </td>
                                     <td>
                                         <div className="actions-row-global">
-                                            <button 
-                                                className="action-btn-global delete" 
-                                                title="Eliminar" 
+                                            <button
+                                                className="action-btn-global delete"
+                                                title="Eliminar"
                                                 onClick={() => handleDelete(alumno._id, alumno.nombre)}
                                             >
                                                 🗑️
@@ -239,6 +250,14 @@ export default function AlumnosPage() {
                     </table>
                 </div>
             </div>
+            {/* MODAL GLOBAL */}
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={confirmModal.action}
+                title={confirmModal.title}
+                message={confirmModal.message}
+            />
         </div>
     );
 }
