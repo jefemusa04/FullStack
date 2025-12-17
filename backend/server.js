@@ -24,7 +24,8 @@ app.use((req, res, next) => {
     const allowedOrigins = [
         'http://localhost:5173', 
         'http://localhost:3000', 
-        'http://aaisforgg.jcarlos19.com'
+        'http://aaisforgg.jcarlos19.com',
+	    'http://159.54.150.99'
     ];
     const origin = req.headers.origin;
 
