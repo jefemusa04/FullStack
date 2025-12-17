@@ -24,8 +24,6 @@ import Calificaciones from './pages/Calificaciones';
 import Alumnos from './pages/docente/Alumnos'; 
 import Mensajes from './pages/Mensajes'; 
 
-
-
 // Componente de Redirección 
 function PrivateRouteRedir() {
     const { user } = useAuth(); 

@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors'); // Lo mantenemos por si acaso, pero usaremos el manual primero
 const dotenv = require('dotenv').config(); 
+const path = require('path');
 const { errorHandler } = require('./src/middlewares/errorMiddleware');
 const connectDB = require('./src/config/dbConexion'); 
 
@@ -68,6 +69,10 @@ const limiter = rateLimit({
 });
  app.use(limiter); 
 
+// 2. CONFIGURACIÓN DE ARCHIVOS ESTÁTICOS (CRÍTICO PARA VER LOS ARCHIVOS)
+// Esto hace que la carpeta 'uploads' sea pública.
+// Si entras a http://tudominio.com/uploads/archivo.pdf, lo podrás ver.
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // RUTAS DE LA API
 

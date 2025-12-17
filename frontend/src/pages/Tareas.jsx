@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSearchParams } from 'react-router-dom';
+
 // IMPORTACIÓN DE SERVICIOS
 import { getTareas, createTarea, updateTarea, deleteTarea } from '../services/tareasService';
 import { getGrupos } from '../services/gruposService'; 
-import { getEntregasByTarea, calificarEntrega } from '../services/entregasService';
+// Asegúrate de que tu entregasService tenga createEntrega y getMisEntregas
+import { getEntregasByTarea, calificarEntrega, createEntrega, getMisEntregas } from '../services/entregasService';
 
 // ==========================================
 // VISTA DOCENTE
@@ -17,6 +19,11 @@ const TareasVistaDocente = () => {
     const [view, setView] = useState('list'); // 'list', 'form', 'entregas'
     const [currentTask, setCurrentTask] = useState(null);
     const [loading, setLoading] = useState(false);
+    
+    // Estado para el archivo del docente
+    const [archivo, setArchivo] = useState(null);
+    // NUEVO: Estado para saber si el docente quiere borrar el archivo existente
+    const [eliminarArchivo, setEliminarArchivo] = useState(false);
 
     // Estado del Formulario
     const initialFormState = { 
@@ -120,6 +127,8 @@ const TareasVistaDocente = () => {
     
     const handleOpenCreate = () => { 
         setFormData(initialFormState); 
+        setArchivo(null); 
+        setEliminarArchivo(false); // Resetear bandera
         setCurrentTask(null); 
         setView('form'); 
     };
@@ -134,6 +143,8 @@ const TareasVistaDocente = () => {
             grupo: grupoValue,
             fechaEntrega: fechaFormat
         });
+        setArchivo(null); 
+        setEliminarArchivo(false); // Resetear bandera al abrir edición
         setCurrentTask(tarea);
         setView('form');
     };
@@ -141,11 +152,29 @@ const TareasVistaDocente = () => {
     const handleSaveTask = async (e) => {
         e.preventDefault();
         try {
+            // SIEMPRE usamos FormData para manejar archivos
+            const datosEnviar = new FormData();
+            datosEnviar.append('titulo', formData.titulo);
+            datosEnviar.append('descripcion', formData.descripcion);
+            datosEnviar.append('grupo', formData.grupo);
+            datosEnviar.append('puntuacionMaxima', formData.puntuacionMaxima);
+            datosEnviar.append('fechaEntrega', formData.fechaEntrega);
+
+            // 1. Si hay un archivo NUEVO seleccionado, lo mandamos
+            if (archivo) {
+                datosEnviar.append('archivo', archivo);
+            }
+
+            // 2. Si es edición y el usuario marcó explícitamente "Eliminar archivo"
+            if (currentTask && eliminarArchivo) {
+                datosEnviar.append('eliminarArchivo', 'true');
+            }
+
             if (currentTask) {
-                await updateTarea(currentTask._id, formData);
+                await updateTarea(currentTask._id, datosEnviar);
                 alert("Tarea actualizada correctamente.");
             } else {
-                await createTarea(formData);
+                await createTarea(datosEnviar);
                 alert("Tarea creada exitosamente.");
             }
             fetchData();
@@ -273,6 +302,43 @@ const TareasVistaDocente = () => {
                             <label className="label-global">Descripción</label>
                             <textarea className="input-global" rows="4" value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} placeholder="Instrucciones..."></textarea>
                         </div>
+                        
+                        {/* --- ZONA DE ARCHIVOS DEL DOCENTE (MODIFICADO) --- */}
+                        <div style={{marginTop:15, padding:15, border:'1px dashed #ccc', borderRadius:6, background: '#f9fafb'}}>
+                            <label className="label-global">📎 Material de Apoyo (Opcional)</label>
+                            
+                            {/* Caso 1: Hay archivo guardado y NO se ha marcado para borrar */}
+                            {currentTask?.archivoUrl && !eliminarArchivo && (
+                                <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap: 10, marginBottom: 10, background: '#e0f2fe', padding: 10, borderRadius: 5}}>
+                                    <div style={{display:'flex', alignItems:'center', gap:10}}>
+                                        <span style={{color:'#0284c7', fontWeight:'bold'}}>📄 Archivo actual activo</span>
+                                        <a href={currentTask.archivoUrl} target="_blank" rel="noreferrer" style={{fontSize:'0.9em', textDecoration:'underline'}}>Ver/Descargar</a>
+                                    </div>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setEliminarArchivo(true)} 
+                                        style={{background:'#ef4444', color:'white', border:'none', borderRadius:4, padding:'4px 10px', cursor:'pointer', fontSize:'0.8em', fontWeight:'bold'}}
+                                    >
+                                        ✕ Eliminar Archivo
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Caso 2: Se marcó para eliminar */}
+                            {eliminarArchivo && (
+                                <div style={{marginBottom: 10, color:'#dc2626', fontSize:'0.9em', fontStyle:'italic', padding:10, background:'#fee2e2', borderRadius:5, border:'1px solid #fca5a5'}}>
+                                    ⚠️ El archivo actual será eliminado al guardar cambios. 
+                                    <button type="button" onClick={() => setEliminarArchivo(false)} style={{marginLeft:10, textDecoration:'underline', background:'none', border:'none', color:'#991b1b', cursor:'pointer', fontWeight:'bold'}}>Deshacer</button>
+                                </div>
+                            )}
+
+                            {/* Input siempre disponible para subir archivo (nuevo o reemplazo) */}
+                            <input type="file" className="input-global" onChange={e => { setArchivo(e.target.files[0]); setEliminarArchivo(false); }} />
+                            <small style={{color:'#666', display:'block', marginTop:5}}>
+                                {currentTask?.archivoUrl ? 'Selecciona un archivo nuevo para REEMPLAZAR el actual.' : 'Sube un archivo (PDF, Word, etc.) para que tus alumnos lo descarguen.'}
+                            </small>
+                        </div>
+
                         <div className="flex justify-end gap-3 mt-6">
                             <button type="button" onClick={() => setView('list')} className="btn btn-cancel">Cancelar</button>
                             <button type="submit" className="btn btn-create">{currentTask ? '💾 Guardar Cambios' : '🚀 Publicar Tarea'}</button>
@@ -472,32 +538,41 @@ const TareasVistaDocente = () => {
                              grouped.length > 0 ? (
                                 grouped.map(([label, items]) => (
                                     <div key={label} ref={el => (weekRefs.current[label] = el)} style={{marginBottom:16, padding:'12px 12px', borderBottom: selectedWeek===label ? '2px solid #e6eef8' : '1px solid #eee', background: selectedWeek===label ? '#fbfdff' : 'transparent', borderRadius:6}}>
-                                            <h3 style={{marginBottom:8, display:'flex', justifyContent:'space-between', alignItems:'center', color: 'var(--color-primary)', fontWeight: 'bold'}}>
-                                                <span>{label}</span>
-                                                <span style={{fontSize:'0.85rem', color:'#666', fontWeight:'normal'}}>{items.length} actividades</span>
-                                            </h3>
-                                            <ul style={{listStyle:'none', padding:0}}>
-                                                {items.map(t => (
-                                                    <li key={t._id} style={{padding:16, borderBottom:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#fff', gap: '1rem', flexWrap: 'wrap'}}>
-                                                        <div style={{flex: 1}}>
-                                                            <div style={{fontWeight:700, color:'#1e293b', fontSize: '1.05rem'}}>{t.titulo}</div>
-                                                            <div style={{fontSize:'0.9rem', color:'#334155', marginTop:6}} className="task-description">{t.descripcion}</div>
-                                                            <div style={{fontSize:'0.85rem', color:'#64748b', marginTop: 8}}>
-                                                                {t.grupo?.nombre || t.grupo} • Puntos: {t.puntuacionMaxima}
-                                                            </div>
-                                                            <div style={{fontSize:'0.85rem', color:'#64748b', marginTop: 4}}>
-                                                                Entrega: {t.fechaEntrega ? new Date(t.fechaEntrega).toLocaleDateString() : 'Sin fecha'}
-                                                            </div>
+                                        <h3 style={{marginBottom:8, display:'flex', justifyContent:'space-between', alignItems:'center', color: 'var(--color-primary)', fontWeight: 'bold'}}>
+                                            <span>{label}</span>
+                                            <span style={{fontSize:'0.85rem', color:'#666', fontWeight:'normal'}}>{items.length} actividades</span>
+                                        </h3>
+                                        <ul style={{listStyle:'none', padding:0}}>
+                                            {items.map(t => (
+                                                <li key={t._id} style={{padding:16, borderBottom:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#fff', gap: '1rem', flexWrap: 'wrap'}}>
+                                                    <div style={{flex: 1}}>
+                                                        <div style={{fontWeight:700, color:'#1e293b', fontSize: '1.05rem'}}>{t.titulo}</div>
+                                                        <div style={{fontSize:'0.9rem', color:'#334155', marginTop:6}} className="task-description">{t.descripcion}</div>
+                                                        <div style={{fontSize:'0.85rem', color:'#64748b', marginTop: 8}}>
+                                                            {t.grupo?.nombre || t.grupo} • Puntos: {t.puntuacionMaxima}
+                                                        </div>
+                                                        <div style={{fontSize:'0.85rem', color:'#64748b', marginTop: 4}}>
+                                                            Entrega: {t.fechaEntrega ? new Date(t.fechaEntrega).toLocaleDateString() : 'Sin fecha'}
                                                         </div>
                                                         
-                                                        <div className="actions-row-global">
-                                                            <button onClick={() => handleViewSubmissions(t)} className="action-btn-global" title="Ver Entregas">👁️</button>
-                                                            <button onClick={() => handleOpenEdit(t)} className="action-btn-global" title="Editar">✏️</button>
-                                                            <button onClick={() => handleDelete(t._id)} className="action-btn-global delete" title="Eliminar">🗑️</button>
-                                                        </div>
-                                                    </li>
-                                                ))}
-                                            </ul>
+                                                        {/* MOSTRAR LINK SI TIENE ARCHIVO DEL DOCENTE */}
+                                                        {t.archivoUrl && (
+                                                            <div style={{marginTop:8}}>
+                                                                <a href={t.archivoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm flex items-center gap-1 font-semibold hover:underline">
+                                                                    📎 Ver Material Adjunto
+                                                                </a>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    <div className="actions-row-global">
+                                                        <button onClick={() => handleViewSubmissions(t)} className="action-btn-global" title="Ver Entregas">👁️</button>
+                                                        <button onClick={() => handleOpenEdit(t)} className="action-btn-global" title="Editar">✏️</button>
+                                                        <button onClick={() => handleDelete(t._id)} className="action-btn-global delete" title="Eliminar">🗑️</button>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
                                     </div>
                                 ))
                             ) : (
@@ -519,22 +594,27 @@ const TareasVistaEstudiante = ({ user }) => {
     const grupoFiltro = searchParams.get('grupo');
 
     const [tareas, setTareas] = useState([]);
+    const [misEntregas, setMisEntregas] = useState([]); // Estado para saber qué ha entregado
     const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        const fetchTareasEstudiante = async () => {
-            setLoading(true);
-            try {
-                const data = await getTareas();
-                setTareas(data);
-            } catch (error) {
-                console.error("Error cargando tareas:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchTareasEstudiante();
-    }, []);
+    // Cargar Tareas y Entregas del alumno
+    const cargarDatos = async () => {
+        setLoading(true);
+        try {
+            const [tareasData, entregasData] = await Promise.all([
+                getTareas(), 
+                getMisEntregas() // Cargamos entregas para saber el estado
+            ]);
+            setTareas(tareasData);
+            setMisEntregas(entregasData);
+        } catch (error) { 
+            console.error("Error cargando tareas:", error); 
+        } finally { 
+            setLoading(false); 
+        }
+    };
+
+    useEffect(() => { cargarDatos(); }, []);
 
     const tareasFiltradas = grupoFiltro ? tareas.filter(t => (t.grupo?.nombre || t.grupo) === grupoFiltro) : tareas;
     const [searchTerm, setSearchTerm] = useState('');
@@ -545,6 +625,13 @@ const TareasVistaEstudiante = ({ user }) => {
         const nombreGrupo = t.grupo?.nombre || t.grupo || '';
         return `${t.titulo} ${t.descripcion} ${nombreGrupo}`.toLowerCase().includes(term);
     });
+
+    // Helper para obtener el estado de una tarea específica
+    const getEstado = (tareaId) => {
+        const entrega = misEntregas.find(e => (e.tarea._id || e.tarea) === tareaId);
+        if (entrega) return { estado: entrega.estado, entrega };
+        return { estado: 'Pendiente', entrega: null };
+    };
 
     const getWeekRangeLabel = (dateStr) => {
         if(!dateStr) return 'Sin Fecha';
@@ -582,11 +669,59 @@ const TareasVistaEstudiante = ({ user }) => {
 
     const [showSidebar, setShowSidebar] = useState(true);
     const weekRefs = useRef({});
+    
+    // Modal states
     const [modalOpen, setModalOpen] = useState(false);
     const [modalTask, setModalTask] = useState(null);
+    const [modalEntrega, setModalEntrega] = useState(null);
 
-    const openModal = (t) => { setModalTask(t); setModalOpen(true); };
+    // Estados para SUBIR TAREA (Estudiante)
+    const [archivoSubir, setArchivoSubir] = useState(null);
+    const [comentarioSubir, setComentarioSubir] = useState('');
+    // NUEVO: Estado para alternar entre "Ver detalles" y "Formulario de edición"
+    const [isEditing, setIsEditing] = useState(false);
+
+    const openModal = (t) => { 
+        const { entrega } = getEstado(t._id);
+        setModalTask(t); 
+        setModalEntrega(entrega); 
+        // Reset form
+        setArchivoSubir(null);
+        setComentarioSubir(entrega ? entrega.comentariosEstudiante : '');
+        // Si ya hay entrega, no empezamos en modo edición
+        setIsEditing(false); 
+        setModalOpen(true); 
+    };
     const closeModal = () => { setModalOpen(false); setModalTask(null); };
+
+    // FUNCIÓN: Entregar Tarea
+    const handleEntregarTarea = async (e) => {
+        e.preventDefault();
+        if (!archivoSubir) return alert("Debes seleccionar un archivo para entregar.");
+
+        const formData = new FormData();
+        formData.append('tareaId', modalTask._id);
+        formData.append('comentariosEstudiante', comentarioSubir);
+        formData.append('archivo', archivoSubir);
+
+        try {
+            await createEntrega(formData);
+            alert("¡Tarea entregada con éxito!");
+            cargarDatos(); // Recargar datos para ver el cambio de estado
+            closeModal();
+        } catch (error) {
+            console.error(error);
+            alert("Error al subir la tarea.");
+        }
+    };
+
+    // Función para ver si la edición está bloqueada
+    const isLocked = () => {
+        if (!modalEntrega) return false;
+        const calificada = modalEntrega.calificacion !== null && modalEntrega.calificacion !== undefined;
+        const yaPaso = new Date() > new Date(modalTask.fechaEntrega);
+        return calificada || yaPaso;
+    };
 
     // Estilos inline
     const tabStyle = { position: 'absolute', left: -18, top: 120, zIndex: 60, cursor: 'pointer' };
@@ -656,20 +791,32 @@ const TareasVistaEstudiante = ({ user }) => {
                                         <span style={{fontSize:'0.85rem', color:'#666'}}>{items.length} tarea{items.length>1?'s':''}</span>
                                     </h3>
                                     <ul style={{listStyle:'none', padding:0}}>
-                                        {items.map(t => (
-                                            <li key={t._id} style={{padding:12, borderBottom:'1px solid #eee', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#fff'}}>
-                                                <div>
-                                                    <div style={{fontWeight:700, color:'#0b3b66'}}>{t.titulo}</div>
-                                                    <div style={{fontSize:'0.85rem', color:'#666'}}>
-                                                        {t.grupo?.nombre || t.grupo} • Entrega: {new Date(t.fechaEntrega).toLocaleDateString()}
+                                        {items.map(t => {
+                                            const { estado, entrega } = getEstado(t._id);
+                                            const color = estado === 'Calificado' ? 'success' : estado === 'Pendiente' ? 'warning' : 'info';
+
+                                            return (
+                                                <li key={t._id} style={{padding:12, borderBottom:'1px solid #eee', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#fff'}}>
+                                                    <div>
+                                                        <div style={{fontWeight:700, color:'#0b3b66'}}>{t.titulo}</div>
+                                                        <div style={{fontSize:'0.85rem', color:'#666'}}>
+                                                            {t.grupo?.nombre || t.grupo} • Entrega: {new Date(t.fechaEntrega).toLocaleDateString()}
+                                                        </div>
+                                                        {t.archivoUrl && (
+                                                            <a href={t.archivoUrl} target="_blank" rel="noreferrer" className="text-blue-600 text-xs flex items-center gap-1 hover:underline">
+                                                                📎 Ver Material del Profe
+                                                            </a>
+                                                        )}
                                                     </div>
-                                                </div>
-                                                <div>
-                                                    <span className={`badge-pill warning`} style={{marginRight:8}}>Pendiente</span>
-                                                    <button className="btn btn-view" onClick={() => openModal(t)}>Ver</button>
-                                                </div>
-                                            </li>
-                                        ))}
+                                                    <div>
+                                                        <span className={`badge-pill ${color}`} style={{marginRight:8}}>{estado}</span>
+                                                        <button className="btn btn-view" onClick={() => openModal(t)}>
+                                                            {entrega ? 'Ver / Editar' : 'Entregar'}
+                                                        </button>
+                                                    </div>
+                                                </li>
+                                            );
+                                        })}
                                     </ul>
                                 </div>
                             ))
@@ -691,13 +838,76 @@ const TareasVistaEstudiante = ({ user }) => {
                                 <strong>Grupo:</strong> {modalTask.grupo?.nombre || modalTask.grupo} • 
                                 <strong>Entrega:</strong> {new Date(modalTask.fechaEntrega).toLocaleDateString()}
                             </p>
-                            <div style={{marginBottom:12}}>{modalTask.descripcion}</div>
-                            <div style={{marginTop:12}}>
-                                <h4 style={{marginBottom:8}}>Estado de entrega</h4>
-                                <div className="stat-card-global" style={{padding:'12px'}}>
-                                    <div style={{fontWeight:700}}>Pendiente (Sin conexión a entregas)</div>
+                            <div style={{marginBottom:12, padding:10, background:'#f9f9f9', borderRadius:6}}>{modalTask.descripcion}</div>
+                            
+                            {/* MOSTRAR ESTADO O FORMULARIO */}
+                            {(!modalEntrega || isEditing) ? (
+                                // MODO EDICIÓN / NUEVA ENTREGA
+                                <div style={{marginTop:15, borderTop:'1px solid #eee', paddingTop:10}}>
+                                    <h4 style={{marginBottom:8, fontWeight:'bold'}}>{modalEntrega ? '✏️ Editar Entrega' : '📤 Nueva Entrega'}</h4>
+                                    
+                                    {modalEntrega && (
+                                        <div style={{fontSize:'0.85rem', color:'#d97706', marginBottom:10, background:'#fffbeb', padding:8, borderRadius:4, border:'1px solid #fcd34d'}}>
+                                            ⚠️ Al subir un nuevo archivo, se <strong>reemplazará</strong> el anterior.
+                                        </div>
+                                    )}
+
+                                    <form onSubmit={handleEntregarTarea}>
+                                        <div style={{marginBottom:10}}>
+                                            <label className="label-global">Subir Archivo (Tarea)</label>
+                                            <input type="file" required className="input-global" onChange={e => setArchivoSubir(e.target.files[0])} />
+                                        </div>
+                                        <div style={{marginBottom:10}}>
+                                            <label className="label-global">Comentarios (Opcional)</label>
+                                            <textarea className="input-global" rows="2" value={comentarioSubir} onChange={e => setComentarioSubir(e.target.value)} placeholder="Escribe aquí..."></textarea>
+                                        </div>
+                                        <div style={{display:'flex', gap:10}}>
+                                            <button type="submit" className="btn btn-create" style={{flex:1}}>
+                                                {modalEntrega ? 'Guardar Cambios' : 'Enviar Tarea Ahora'}
+                                            </button>
+                                            {modalEntrega && (
+                                                <button type="button" className="btn btn-cancel" onClick={() => setIsEditing(false)}>Cancelar</button>
+                                            )}
+                                        </div>
+                                    </form>
                                 </div>
-                            </div>
+                            ) : (
+                                // MODO DETALLES (Ya entregado)
+                                <div style={{marginTop:15, borderTop:'1px solid #eee', paddingTop:10}}>
+                                    <div className="stat-card-global" style={{padding:'15px', display:'block'}}>
+                                        <div style={{marginBottom:5}}>
+                                            <strong>Estado:</strong> <span className={`badge-pill ${modalEntrega.estado === 'Calificado'?'success':'info'}`}>{modalEntrega.estado}</span>
+                                        </div>
+                                        <div style={{marginBottom:5}}>
+                                            <a href={modalEntrega.archivoUrl} target="_blank" rel="noreferrer" className="text-blue-600 font-bold hover:underline">
+                                                📄 Ver tu archivo enviado
+                                            </a>
+                                        </div>
+                                        {modalEntrega.calificacion !== null && (
+                                            <div style={{marginTop:10, fontSize:'1.1em', fontWeight:'bold', color:'green'}}>
+                                                Calificación: {modalEntrega.calificacion} / {modalTask.puntuacionMaxima}
+                                            </div>
+                                        )}
+                                        {modalEntrega.comentariosDocente && (
+                                            <div style={{marginTop:8, fontStyle:'italic', color:'#555'}}>
+                                                " {modalEntrega.comentariosDocente} "
+                                            </div>
+                                        )}
+
+                                        {/* Botón EDITAR (Solo si no está bloqueada) */}
+                                        {!isLocked() && (
+                                            <button onClick={() => setIsEditing(true)} className="btn btn-view" style={{marginTop:15, width:'100%'}}>
+                                                ✏️ Editar / Reemplazar Archivo
+                                            </button>
+                                        )}
+                                        {isLocked() && (
+                                            <p style={{color:'red', fontSize:'0.8em', marginTop:10, fontStyle:'italic'}}>
+                                                * No puedes editar esta entrega (Calificada o Vencida).
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
