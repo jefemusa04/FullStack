@@ -2,42 +2,32 @@ import React, { useState } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import "../../styles/auth.css"; 
+import axios from "axios";
 
 export default function ResetPasswordPage() {
+  // Tus compañeros usaron query params (?token=xyz)
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token'); 
   const navigate = useNavigate();
-
   const [form, setForm] = useState({ password: "", confirmPassword: "" });
 
-  // Reglas de validación
-  const MIN_LENGTH = 8;
-  const HAS_UPPERCASE = /[A-Z]/;
-  const HAS_NUMBER = /[0-9]/;
-  const HAS_SPECIAL_CHAR = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/;
-
-  const validate = () => {
-    if (form.password !== form.confirmPassword) {
-        toast.error("Las contraseñas no coinciden."); return false;
-    }
-    if (form.password.length < MIN_LENGTH || !HAS_UPPERCASE.test(form.password) || !HAS_NUMBER.test(form.password) || !HAS_SPECIAL_CHAR.test(form.password)) {
-      toast.error("La contraseña debe ser segura (Mín 8, Mayús, Núm, Símbolo).");
-      return false;
-    }
-    return true;
-  };
+  // ... (mantén las funciones de validación MIN_LENGTH, etc.)
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!token) return toast.error("Token inválido o expirado.");
+    if (!token) return toast.error("Falta el token de seguridad.");
     if (!validate()) return;
     
     try {
-      // await resetPassword(token, form.password); 
+      // CONEXIÓN REAL: Enviamos la nueva password al backend
+      await axios.put(`http://aaisforgg.jcarlos19.com:5000/api/auth/reset-password/${token}`, { 
+        password: form.password 
+      });
+
       toast.success("¡Contraseña actualizada! Inicia sesión.");
       navigate("/login"); 
     } catch (error) {
-      toast.error("El enlace ha caducado.");
+      toast.error(error.response?.data?.message || "El enlace ha caducado o es inválido.");
     }
   };
 

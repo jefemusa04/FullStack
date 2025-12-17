@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import "../../styles/auth.css"; 
+// ... (mismo imports)
+import axios from "axios"; // Asegúrate de instalarlo: npm install axios
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -14,12 +16,16 @@ export default function ForgotPasswordPage() {
       return toast.error("Ingresa un correo válido.");
     }
 
-    // Simulación de API
-    // await requestPasswordReset(email); 
-    
-    toast.info("Si el correo existe, recibirás un enlace en breve.");
-    setEmail(""); 
-    setTimeout(() => navigate("/login"), 4000); 
+    try {
+      // CONEXIÓN REAL CON TU BACKEND
+      await axios.post("http://aaisforgg.jcarlos19.com:5000/api/auth/forgot-password", { email });
+      
+      toast.info("Si el correo existe, recibirás un enlace en breve.");
+      setEmail(""); 
+      setTimeout(() => navigate("/login"), 4000); 
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Error al procesar la solicitud.");
+    }
   };
 
   return (

@@ -3,6 +3,15 @@ const cors = require('cors'); // Lo mantenemos por si acaso, pero usaremos el ma
 const dotenv = require('dotenv').config(); 
 const { errorHandler } = require('./src/middlewares/errorMiddleware');
 const connectDB = require('./src/config/dbConexion'); 
+const authRoutes = require('./routes/authRoutes.js');
+
+app.use(cors());
+
+// Middlewares necesarios
+app.use(express.json()); 
+
+// Vincular rutas
+app.use('/api/auth', authRoutes);
 
 // Importar librerías de seguridad
 const mongoSanitize = require('express-mongo-sanitize');
